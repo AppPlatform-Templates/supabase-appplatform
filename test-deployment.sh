@@ -157,9 +157,6 @@ spec:
 
   services:
     - name: studio
-      git:
-        repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
-        branch: main
       image:
         registry_type: DOCKER_HUB
         registry: supabase
@@ -199,9 +196,6 @@ spec:
           value: "false"
 
     - name: rest
-      git:
-        repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
-        branch: main
       image:
         registry_type: DOCKER_HUB
         registry: postgrest
@@ -231,9 +225,6 @@ spec:
 
   workers:
     - name: auth
-      git:
-        repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
-        branch: main
       image:
         registry_type: DOCKER_HUB
         registry: supabase
@@ -285,9 +276,6 @@ spec:
           value: "false"
 
     - name: meta
-      git:
-        repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
-        branch: main
       image:
         registry_type: DOCKER_HUB
         registry: supabase
@@ -316,9 +304,6 @@ spec:
           value: \${db.PASSWORD}
 
     - name: storage
-      git:
-        repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
-        branch: main
       image:
         registry_type: DOCKER_HUB
         registry: supabase
