@@ -1,7 +1,7 @@
 spec:
   name: supabase
   region: nyc
-
+  
   ingress:
     rules:
       - match:
@@ -27,7 +27,7 @@ spec:
             prefix: /
         component:
           name: studio
-
+  
   services:
     - name: studio
       image:
@@ -70,7 +70,7 @@ spec:
           value: ${SUPABASE_SERVICE_ROLE_KEY}
         - key: NEXT_PUBLIC_ENABLE_LOGS
           value: "false"
-
+  
     - name: rest
       image:
         registry_type: DOCKER_HUB
@@ -102,14 +102,15 @@ spec:
           scope: RUN_TIME
           type: SECRET
           value: ${SUPABASE_JWT_SECRET}
-
-  workers:
+  
+    # GoTrue - Authentication Service (HTTP accessible)
     - name: auth
       image:
         registry_type: DOCKER_HUB
         registry: supabase
         repository: gotrue
         tag: v2.174.0
+      http_port: 9999
       instance_count: 1
       instance_size_slug: basic-xxs
       envs:
@@ -159,7 +160,9 @@ spec:
           value: ${SMTP_ADMIN_EMAIL}
         - key: GOTRUE_MAILER_AUTOCONFIRM
           value: "false"
-
+  
+  workers:
+    # Meta - Database Management API (internal only, accessed by Studio)
     - name: meta
       image:
         registry_type: DOCKER_HUB
@@ -187,16 +190,20 @@ spec:
           scope: RUN_TIME
           type: SECRET
           value: ${db.PASSWORD}
-
+  
+    # Storage - File Management Service (HTTP accessible)
     - name: storage
       image:
         registry_type: DOCKER_HUB
         registry: supabase
         repository: storage-api
         tag: v1.11.1
+      http_port: 5000
       instance_count: 1
       instance_size_slug: basic-xxs
       envs:
+        - key: SERVER_PORT
+          value: "5000"
         - key: ANON_KEY
           scope: RUN_TIME
           type: SECRET
@@ -237,7 +244,7 @@ spec:
           scope: RUN_TIME
           type: SECRET
           value: ${SPACES_SECRET_KEY}
-
+  
   jobs:
     - name: db-init
       git:
@@ -251,7 +258,7 @@ spec:
         - key: DATABASE_URL
           scope: RUN_TIME
           value: ${db.DATABASE_URL}
-
+  
   databases:
     - name: db
       engine: PG
