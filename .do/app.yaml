@@ -1,44 +1,34 @@
 spec:
   name: supabase
   region: nyc
-
-  # Ingress configuration - replaces Kong API gateway
-  # Routes all requests to appropriate Supabase components
+  
   ingress:
     rules:
-      # Route REST API (PostgREST)
       - match:
           path:
             prefix: /rest/v1
         component:
           name: rest
           rewrite: /
-
-      # Route Auth API (GoTrue)
       - match:
           path:
             prefix: /auth/v1
         component:
           name: auth
           rewrite: /
-
-      # Route Storage API
       - match:
           path:
             prefix: /storage/v1
         component:
           name: storage
           rewrite: /
-
-      # Route Studio (admin dashboard) - must be last (catch-all)
       - match:
           path:
             prefix: /
         component:
           name: studio
-
+  
   services:
-    # Studio - Web Admin Dashboard
     - name: studio
       image:
         registry_type: DOCKER_HUB
@@ -48,14 +38,12 @@ spec:
       http_port: 3000
       instance_count: 1
       instance_size_slug: basic-xxs
-
       health_check:
         http_path: /api/profile
         initial_delay_seconds: 30
         period_seconds: 10
         timeout_seconds: 5
         failure_threshold: 3
-
       envs:
         - key: STUDIO_PG_META_URL
           value: http://meta:8080
@@ -82,8 +70,7 @@ spec:
           value: ${SUPABASE_SERVICE_ROLE_KEY}
         - key: NEXT_PUBLIC_ENABLE_LOGS
           value: "false"
-
-    # PostgREST - Auto-generated REST API from PostgreSQL
+  
     - name: rest
       image:
         registry_type: DOCKER_HUB
@@ -93,14 +80,12 @@ spec:
       http_port: 3000
       instance_count: 1
       instance_size_slug: basic-xxs
-
       health_check:
         http_path: /
         initial_delay_seconds: 10
         period_seconds: 10
         timeout_seconds: 3
         failure_threshold: 3
-
       envs:
         - key: PGRST_DB_URI
           scope: RUN_TIME
@@ -117,18 +102,17 @@ spec:
           scope: RUN_TIME
           type: SECRET
           value: ${SUPABASE_JWT_SECRET}
-
-  workers:
-    # GoTrue - Authentication Service
+  
+    # GoTrue - Authentication Service (HTTP accessible)
     - name: auth
       image:
         registry_type: DOCKER_HUB
         registry: supabase
         repository: gotrue
         tag: v2.174.0
+      http_port: 9999
       instance_count: 1
       instance_size_slug: basic-xxs
-
       envs:
         - key: GOTRUE_API_HOST
           value: "0.0.0.0"
@@ -158,7 +142,6 @@ spec:
         - key: API_EXTERNAL_URL
           scope: RUN_TIME
           value: ${APP_URL}
-        # SMTP Configuration (optional - leave empty to disable email auth)
         - key: GOTRUE_SMTP_HOST
           scope: RUN_TIME
           value: ${SMTP_HOST}
@@ -177,8 +160,9 @@ spec:
           value: ${SMTP_ADMIN_EMAIL}
         - key: GOTRUE_MAILER_AUTOCONFIRM
           value: "false"
-
-    # Meta - Database Management API
+  
+  workers:
+    # Meta - Database Management API (internal only, accessed by Studio)
     - name: meta
       image:
         registry_type: DOCKER_HUB
@@ -187,7 +171,6 @@ spec:
         tag: v0.84.2
       instance_count: 1
       instance_size_slug: basic-xxs
-
       envs:
         - key: PG_META_PORT
           value: "8080"
@@ -207,8 +190,8 @@ spec:
           scope: RUN_TIME
           type: SECRET
           value: ${db.PASSWORD}
-
-    # Storage - S3-compatible File Storage API
+  
+    # Storage - File Management Service (HTTP accessible)
     - name: storage
       image:
         registry_type: DOCKER_HUB
@@ -217,8 +200,9 @@ spec:
         tag: v1.11.1
       instance_count: 1
       instance_size_slug: basic-xxs
-
       envs:
+        - key: SERVER_PORT
+          value: "5000"
         - key: ANON_KEY
           scope: RUN_TIME
           type: SECRET
@@ -242,7 +226,6 @@ spec:
           value: s3
         - key: TENANT_ID
           value: stub
-        # DigitalOcean Spaces Configuration
         - key: GLOBAL_S3_BUCKET
           scope: RUN_TIME
           value: ${SPACES_BUCKET}
@@ -260,20 +243,21 @@ spec:
           scope: RUN_TIME
           type: SECRET
           value: ${SPACES_SECRET_KEY}
-
+  
   jobs:
-    # Database Initialization Job (runs after each deployment)
     - name: db-init
+      git:
+        repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
+        branch: main
       kind: POST_DEPLOY
       dockerfile_path: Dockerfile.dbinit
       instance_count: 1
       instance_size_slug: basic-xxs
-
       envs:
         - key: DATABASE_URL
           scope: RUN_TIME
           value: ${db.DATABASE_URL}
-
+  
   databases:
     - name: db
       engine: PG
