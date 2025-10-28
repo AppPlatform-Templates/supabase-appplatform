@@ -198,7 +198,6 @@ spec:
         registry: supabase
         repository: storage-api
         tag: v1.11.1
-      http_port: 5000
       instance_count: 1
       instance_size_slug: basic-xxs
       envs:
