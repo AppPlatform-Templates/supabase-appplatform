@@ -1,0 +1,265 @@
+spec:
+  name: supabase
+  region: nyc
+  
+  ingress:
+    rules:
+      - match:
+          path:
+            prefix: /rest/v1
+        component:
+          name: rest
+          rewrite: /
+      - match:
+          path:
+            prefix: /auth/v1
+        component:
+          name: auth
+          rewrite: /
+      - match:
+          path:
+            prefix: /storage/v1
+        component:
+          name: storage
+          rewrite: /
+      - match:
+          path:
+            prefix: /
+        component:
+          name: studio
+  
+  services:
+    - name: studio
+      image:
+        registry_type: DOCKER_HUB
+        registry: supabase
+        repository: studio
+        tag: "20241022-ce94d1b"
+      http_port: 3000
+      instance_count: 1
+      instance_size_slug: basic-xxs
+      health_check:
+        http_path: /api/profile
+        initial_delay_seconds: 30
+        period_seconds: 10
+        timeout_seconds: 5
+        failure_threshold: 3
+      envs:
+        - key: STUDIO_PG_META_URL
+          value: http://meta:8080
+        - key: POSTGRES_PASSWORD
+          scope: RUN_TIME
+          value: ${db.PASSWORD}
+        - key: DEFAULT_ORGANIZATION_NAME
+          value: "My Organization"
+        - key: DEFAULT_PROJECT_NAME
+          value: "My Project"
+        - key: SUPABASE_URL
+          scope: RUN_TIME
+          value: ${APP_URL}
+        - key: SUPABASE_PUBLIC_URL
+          scope: RUN_TIME
+          value: ${APP_URL}
+        - key: SUPABASE_ANON_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_ANON_KEY}
+        - key: SUPABASE_SERVICE_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_SERVICE_ROLE_KEY}
+        - key: NEXT_PUBLIC_ENABLE_LOGS
+          value: "false"
+  
+    - name: rest
+      image:
+        registry_type: DOCKER_HUB
+        registry: postgrest
+        repository: postgrest
+        tag: v12.2.3
+      http_port: 3000
+      instance_count: 1
+      instance_size_slug: basic-xxs
+      health_check:
+        http_path: /
+        initial_delay_seconds: 10
+        period_seconds: 10
+        timeout_seconds: 3
+        failure_threshold: 3
+      envs:
+        - key: PGRST_DB_URI
+          scope: RUN_TIME
+          value: ${db.DATABASE_URL}
+        - key: PGRST_DB_SCHEMAS
+          value: public,storage,graphql_public
+        - key: PGRST_DB_ANON_ROLE
+          value: anon
+        - key: PGRST_DB_POOL
+          value: "10"
+        - key: PGRST_SERVER_PORT
+          value: "3000"
+        - key: PGRST_JWT_SECRET
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_JWT_SECRET}
+  
+    # GoTrue - Authentication Service (HTTP accessible)
+    - name: auth
+      image:
+        registry_type: DOCKER_HUB
+        registry: supabase
+        repository: gotrue
+        tag: v2.174.0
+      http_port: 9999
+      instance_count: 1
+      instance_size_slug: basic-xxs
+      envs:
+        - key: GOTRUE_API_HOST
+          value: "0.0.0.0"
+        - key: GOTRUE_API_PORT
+          value: "9999"
+        - key: GOTRUE_DB_DRIVER
+          value: postgres
+        - key: GOTRUE_DB_DATABASE_URL
+          scope: RUN_TIME
+          value: ${db.DATABASE_URL}
+        - key: GOTRUE_SITE_URL
+          scope: RUN_TIME
+          value: ${APP_URL}
+        - key: GOTRUE_URI_ALLOW_LIST
+          scope: RUN_TIME
+          value: ${APP_URL}
+        - key: GOTRUE_JWT_SECRET
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_JWT_SECRET}
+        - key: GOTRUE_JWT_EXP
+          value: "3600"
+        - key: GOTRUE_JWT_AUD
+          value: "authenticated"
+        - key: GOTRUE_DISABLE_SIGNUP
+          value: "false"
+        - key: API_EXTERNAL_URL
+          scope: RUN_TIME
+          value: ${APP_URL}
+        - key: GOTRUE_SMTP_HOST
+          scope: RUN_TIME
+          value: ${SMTP_HOST}
+        - key: GOTRUE_SMTP_PORT
+          scope: RUN_TIME
+          value: ${SMTP_PORT}
+        - key: GOTRUE_SMTP_USER
+          scope: RUN_TIME
+          value: ${SMTP_USER}
+        - key: GOTRUE_SMTP_PASS
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SMTP_PASS}
+        - key: GOTRUE_SMTP_ADMIN_EMAIL
+          scope: RUN_TIME
+          value: ${SMTP_ADMIN_EMAIL}
+        - key: GOTRUE_MAILER_AUTOCONFIRM
+          value: "false"
+
+    # Storage - File Management Service (HTTP accessible)
+    - name: storage
+      image:
+        registry_type: DOCKER_HUB
+        registry: supabase
+        repository: storage-api
+        tag: v1.11.1
+      instance_count: 1
+      instance_size_slug: basic-xxs
+      envs:
+        - key: SERVER_PORT
+          value: "5000"
+        - key: ANON_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_ANON_KEY}
+        - key: SERVICE_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_SERVICE_ROLE_KEY}
+        - key: POSTGREST_URL
+          value: http://rest:3000
+        - key: PGRST_JWT_SECRET
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_JWT_SECRET}
+        - key: DATABASE_URL
+          scope: RUN_TIME
+          value: ${db.DATABASE_URL}
+        - key: FILE_SIZE_LIMIT
+          value: "52428800"
+        - key: STORAGE_BACKEND
+          value: s3
+        - key: TENANT_ID
+          value: stub
+        - key: GLOBAL_S3_BUCKET
+          scope: RUN_TIME
+          value: ${SPACES_BUCKET}
+        - key: REGION
+          scope: RUN_TIME
+          value: ${SPACES_REGION}
+        - key: GLOBAL_S3_ENDPOINT
+          scope: RUN_TIME
+          value: https://${SPACES_REGION}.digitaloceanspaces.com
+        - key: AWS_ACCESS_KEY_ID
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SPACES_ACCESS_KEY}
+        - key: AWS_SECRET_ACCESS_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SPACES_SECRET_KEY}
+
+  workers:
+    # Meta - Database Management API (internal only, accessed by Studio)
+    - name: meta
+      image:
+        registry_type: DOCKER_HUB
+        registry: supabase
+        repository: postgres-meta
+        tag: v0.84.2
+      instance_count: 1
+      instance_size_slug: basic-xxs
+      envs:
+        - key: PG_META_PORT
+          value: "8080"
+        - key: PG_META_DB_HOST
+          scope: RUN_TIME
+          value: ${db.HOSTNAME}
+        - key: PG_META_DB_PORT
+          scope: RUN_TIME
+          value: ${db.PORT}
+        - key: PG_META_DB_NAME
+          scope: RUN_TIME
+          value: ${db.DATABASE}
+        - key: PG_META_DB_USER
+          scope: RUN_TIME
+          value: ${db.USERNAME}
+        - key: PG_META_DB_PASSWORD
+          scope: RUN_TIME
+          type: SECRET
+          value: ${db.PASSWORD}
+
+  jobs:
+    - name: db-init
+      git:
+        repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
+        branch: main
+      kind: POST_DEPLOY
+      dockerfile_path: Dockerfile.dbinit
+      instance_count: 1
+      instance_size_slug: basic-xxs
+      envs:
+        - key: DATABASE_URL
+          scope: RUN_TIME
+          value: ${db.DATABASE_URL}
+  
+  databases:
+    - name: db
+      engine: PG
+      production: false
+      version: "15"
