@@ -1,0 +1,439 @@
+# Supabase Production Configuration for DigitalOcean App Platform
+#
+# This configuration is optimized for production workloads with:
+# - Auto-scaling (2-10 instances per service)
+# - Managed PostgreSQL (production tier with standby)
+# - Professional instance sizes for better performance
+# - Health checks and monitoring
+#
+# Prerequisites:
+# 1. Create managed PostgreSQL database (see instructions below)
+# 2. Create Spaces bucket for storage
+# 3. Generate all JWT keys
+# 4. Configure SMTP (optional)
+#
+# Estimated Cost: $200-600/month depending on scale
+#
+# To use this configuration:
+# 1. Copy this file to .do/app.yaml
+# 2. Replace all placeholder values
+# 3. Deploy: doctl apps create --spec .do/app.yaml
+
+spec:
+  name: supabase-production
+  region: nyc
+
+  # Production ingress routing
+  ingress:
+    rules:
+      - match:
+          path:
+            prefix: /rest/v1
+        component:
+          name: rest
+          rewrite: /
+      - match:
+          path:
+            prefix: /auth/v1
+        component:
+          name: auth
+          rewrite: /
+      - match:
+          path:
+            prefix: /storage/v1
+        component:
+          name: storage
+          rewrite: /
+      - match:
+          path:
+            prefix: /
+        component:
+          name: studio
+
+  services:
+    # Studio - Admin Dashboard (Production)
+    - name: studio
+      image:
+        registry_type: DOCKER_HUB
+        registry: supabase
+        repository: studio
+        tag: "20241022-ce94d1b"
+      http_port: 3000
+      instance_size_slug: professional-xs
+
+      # Auto-scaling configuration
+      autoscaling:
+        min_instance_count: 2
+        max_instance_count: 5
+        metrics:
+          cpu:
+            percent: 70
+
+      health_check:
+        http_path: /api/profile
+        initial_delay_seconds: 30
+        period_seconds: 10
+        timeout_seconds: 5
+        failure_threshold: 3
+        success_threshold: 1
+
+      envs:
+        - key: STUDIO_PG_META_URL
+          value: http://meta:8080
+        - key: POSTGRES_PASSWORD
+          scope: RUN_TIME
+          type: SECRET
+          value: ${MANAGED_DB_PASSWORD}
+        - key: DEFAULT_ORGANIZATION_NAME
+          value: "Production"
+        - key: DEFAULT_PROJECT_NAME
+          value: "Main Project"
+        - key: SUPABASE_URL
+          scope: RUN_TIME
+          value: ${APP_URL}
+        - key: SUPABASE_PUBLIC_URL
+          scope: RUN_TIME
+          value: ${APP_URL}
+        - key: SUPABASE_ANON_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_ANON_KEY}
+        - key: SUPABASE_SERVICE_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_SERVICE_ROLE_KEY}
+        - key: NEXT_PUBLIC_ENABLE_LOGS
+          value: "true"
+
+    # PostgREST - REST API (Production with auto-scaling)
+    - name: rest
+      image:
+        registry_type: DOCKER_HUB
+        registry: postgrest
+        repository: postgrest
+        tag: v12.2.3
+      http_port: 3000
+      instance_size_slug: professional-xs
+
+      autoscaling:
+        min_instance_count: 2
+        max_instance_count: 10
+        metrics:
+          cpu:
+            percent: 70
+
+      health_check:
+        http_path: /
+        initial_delay_seconds: 10
+        period_seconds: 10
+        timeout_seconds: 3
+        failure_threshold: 3
+        success_threshold: 1
+
+      envs:
+        - key: PGRST_DB_URI
+          scope: RUN_TIME
+          type: SECRET
+          value: ${MANAGED_DB_CONNECTION_STRING}
+        - key: PGRST_DB_SCHEMAS
+          value: public,storage,graphql_public
+        - key: PGRST_DB_ANON_ROLE
+          value: anon
+        - key: PGRST_DB_POOL
+          value: "10"
+        - key: PGRST_DB_POOL_TIMEOUT
+          value: "10"
+        - key: PGRST_SERVER_PORT
+          value: "3000"
+        - key: PGRST_JWT_SECRET
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_JWT_SECRET}
+        - key: PGRST_JWT_AUD
+          value: authenticated
+
+  workers:
+    # GoTrue - Authentication (Production)
+    - name: auth
+      image:
+        registry_type: DOCKER_HUB
+        registry: supabase
+        repository: gotrue
+        tag: v2.174.0
+      instance_size_slug: professional-xs
+
+      autoscaling:
+        min_instance_count: 2
+        max_instance_count: 8
+        metrics:
+          cpu:
+            percent: 70
+
+      envs:
+        - key: GOTRUE_API_HOST
+          value: "0.0.0.0"
+        - key: GOTRUE_API_PORT
+          value: "9999"
+        - key: GOTRUE_DB_DRIVER
+          value: postgres
+        - key: GOTRUE_DB_DATABASE_URL
+          scope: RUN_TIME
+          type: SECRET
+          value: ${MANAGED_DB_CONNECTION_STRING}
+        - key: GOTRUE_SITE_URL
+          scope: RUN_TIME
+          value: ${APP_URL}
+        - key: GOTRUE_URI_ALLOW_LIST
+          scope: RUN_TIME
+          value: ${APP_URL}
+        - key: GOTRUE_JWT_SECRET
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_JWT_SECRET}
+        - key: GOTRUE_JWT_EXP
+          value: "3600"
+        - key: GOTRUE_JWT_AUD
+          value: authenticated
+        - key: GOTRUE_DISABLE_SIGNUP
+          value: "false"
+        - key: API_EXTERNAL_URL
+          scope: RUN_TIME
+          value: ${APP_URL}
+        # SMTP Configuration
+        - key: GOTRUE_SMTP_HOST
+          scope: RUN_TIME
+          value: ${SMTP_HOST}
+        - key: GOTRUE_SMTP_PORT
+          scope: RUN_TIME
+          value: ${SMTP_PORT}
+        - key: GOTRUE_SMTP_USER
+          scope: RUN_TIME
+          value: ${SMTP_USER}
+        - key: GOTRUE_SMTP_PASS
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SMTP_PASS}
+        - key: GOTRUE_SMTP_ADMIN_EMAIL
+          scope: RUN_TIME
+          value: ${SMTP_ADMIN_EMAIL}
+        - key: GOTRUE_MAILER_AUTOCONFIRM
+          value: "false"
+        # Rate limiting
+        - key: GOTRUE_RATE_LIMIT_EMAIL_SENT
+          value: "10"
+        - key: GOTRUE_RATE_LIMIT_SMS_SENT
+          value: "10"
+
+    # Meta - Database Management (Production)
+    - name: meta
+      image:
+        registry_type: DOCKER_HUB
+        registry: supabase
+        repository: postgres-meta
+        tag: v0.84.2
+      instance_size_slug: basic-xs
+      instance_count: 2
+
+      envs:
+        - key: PG_META_PORT
+          value: "8080"
+        - key: PG_META_DB_HOST
+          scope: RUN_TIME
+          value: ${MANAGED_DB_HOSTNAME}
+        - key: PG_META_DB_PORT
+          scope: RUN_TIME
+          value: ${MANAGED_DB_PORT}
+        - key: PG_META_DB_NAME
+          scope: RUN_TIME
+          value: ${MANAGED_DB_DATABASE}
+        - key: PG_META_DB_USER
+          scope: RUN_TIME
+          value: ${MANAGED_DB_USERNAME}
+        - key: PG_META_DB_PASSWORD
+          scope: RUN_TIME
+          type: SECRET
+          value: ${MANAGED_DB_PASSWORD}
+
+    # Storage - File Management (Production)
+    - name: storage
+      image:
+        registry_type: DOCKER_HUB
+        registry: supabase
+        repository: storage-api
+        tag: v1.11.1
+      instance_size_slug: professional-xs
+
+      autoscaling:
+        min_instance_count: 2
+        max_instance_count: 8
+        metrics:
+          cpu:
+            percent: 70
+
+      envs:
+        - key: ANON_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_ANON_KEY}
+        - key: SERVICE_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_SERVICE_ROLE_KEY}
+        - key: POSTGREST_URL
+          value: http://rest:3000
+        - key: PGRST_JWT_SECRET
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_JWT_SECRET}
+        - key: DATABASE_URL
+          scope: RUN_TIME
+          type: SECRET
+          value: ${MANAGED_DB_CONNECTION_STRING}
+        - key: FILE_SIZE_LIMIT
+          value: "52428800"
+        - key: STORAGE_BACKEND
+          value: s3
+        - key: TENANT_ID
+          value: stub
+        # DigitalOcean Spaces
+        - key: GLOBAL_S3_BUCKET
+          scope: RUN_TIME
+          value: ${SPACES_BUCKET}
+        - key: REGION
+          scope: RUN_TIME
+          value: ${SPACES_REGION}
+        - key: GLOBAL_S3_ENDPOINT
+          scope: RUN_TIME
+          value: https://${SPACES_REGION}.digitaloceanspaces.com
+        - key: AWS_ACCESS_KEY_ID
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SPACES_ACCESS_KEY}
+        - key: AWS_SECRET_ACCESS_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SPACES_SECRET_KEY}
+
+  jobs:
+    # Database Initialization (runs after deployment)
+    - name: db-init
+      kind: POST_DEPLOY
+      dockerfile_path: Dockerfile.dbinit
+      instance_count: 1
+      instance_size_slug: basic-xxs
+
+      envs:
+        - key: DATABASE_URL
+          scope: RUN_TIME
+          type: SECRET
+          value: ${MANAGED_DB_CONNECTION_STRING}
+
+# ==============================================================================
+# IMPORTANT: Database Configuration
+# ==============================================================================
+#
+# This production configuration expects a MANAGED PostgreSQL database instead
+# of the dev database. You have two options:
+#
+# Option 1: Use App Platform's database component (simpler)
+# Add this to the spec:
+#
+# databases:
+#   - name: db
+#     engine: PG
+#     production: true
+#     version: "15"
+#     size: db-s-2vcpu-4gb
+#     num_nodes: 1
+#
+# Then use ${db.DATABASE_URL}, ${db.HOSTNAME}, etc. in environment variables
+#
+# Option 2: Use separately created managed database (more flexible)
+# 1. Create database via doctl:
+#
+#    doctl databases create supabase-prod \
+#      --engine pg \
+#      --version 15 \
+#      --region nyc3 \
+#      --size db-s-2vcpu-4gb \
+#      --num-nodes 2
+#
+# 2. Get connection details:
+#
+#    DB_ID=$(doctl databases list | grep supabase-prod | awk '{print $1}')
+#    doctl databases connection $DB_ID --format URI
+#
+# 3. Set environment variables in this spec:
+#    - MANAGED_DB_CONNECTION_STRING
+#    - MANAGED_DB_HOSTNAME
+#    - MANAGED_DB_PORT
+#    - MANAGED_DB_DATABASE
+#    - MANAGED_DB_USERNAME
+#    - MANAGED_DB_PASSWORD
+#
+# ==============================================================================
+# Database Sizing Guide
+# ==============================================================================
+#
+# For small production (< 100 concurrent users):
+#   - db-s-2vcpu-4gb, 1 node: $120/month
+#   - 97 max connections
+#
+# For medium production (100-1000 users):
+#   - db-s-2vcpu-4gb, 2 nodes (with standby): $240/month
+#   - 97 max connections, automatic failover
+#
+# For large production (1000+ users):
+#   - db-s-4vcpu-8gb, 2 nodes: $480/month
+#   - 220 max connections, high availability
+#
+# ==============================================================================
+# Connection Pool Calculation
+# ==============================================================================
+#
+# PostgREST: 10 connections × max 10 instances = 100 connections
+# GoTrue: 5 connections × max 8 instances = 40 connections
+# Storage: 5 connections × max 8 instances = 40 connections
+# Meta: 2 connections × 2 instances = 4 connections
+# Buffer: 10 connections
+# -----------------------------------------------------------
+# Total: ~194 connections needed at max scale
+#
+# Recommended: db-s-4vcpu-8gb (220 connections) for full auto-scaling
+#
+# ==============================================================================
+# Security Checklist
+# ==============================================================================
+#
+# Before going live:
+# [ ] Rotate all JWT keys
+# [ ] Enable database connection pooling
+# [ ] Set up database firewall (restrict to App Platform IPs)
+# [ ] Configure custom domain with SSL
+# [ ] Enable log forwarding (see below)
+# [ ] Set up monitoring alerts
+# [ ] Configure database backups (automatic with managed DB)
+# [ ] Test disaster recovery procedures
+# [ ] Implement rate limiting (already configured in GoTrue)
+# [ ] Review and test all RLS policies
+#
+# ==============================================================================
+# Optional: Log Forwarding
+# ==============================================================================
+#
+# Add log forwarding to services for production monitoring:
+#
+# log_destinations:
+#   - name: datadog
+#     datadog:
+#       api_key: ${DATADOG_API_KEY}
+#       endpoint: https://http-intake.logs.datadoghq.com
+#
+# Or use Logtail:
+#
+# log_destinations:
+#   - name: logtail
+#     logtail:
+#       token: ${LOGTAIL_TOKEN}
+#
+# ==============================================================================
