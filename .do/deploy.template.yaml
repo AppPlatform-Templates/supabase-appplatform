@@ -34,7 +34,6 @@ spec:
         registry_type: DOCKER_HUB
         registry: supabase
         repository: studio
-        tag: "20241022-ce94d1b"
       http_port: 3000
       instance_count: 1
       instance_size_slug: basic-xxs
