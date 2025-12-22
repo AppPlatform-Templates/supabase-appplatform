@@ -35,7 +35,7 @@ spec:
         repository: studio
       http_port: 3000
       instance_count: 1
-      instance_size_slug: basic-xxs
+      instance_size_slug: apps-s-1vcpu-0.5gb
       health_check:
         http_path: /api/profile
         initial_delay_seconds: 30
@@ -47,7 +47,7 @@ spec:
           value: http://meta:8080
         - key: POSTGRES_PASSWORD
           scope: RUN_TIME
-          value: ${db.PASSWORD}
+          value: ${supabase-db.PASSWORD}
         - key: DEFAULT_ORGANIZATION_NAME
           value: "My Organization"
         - key: DEFAULT_PROJECT_NAME
@@ -77,6 +77,7 @@ spec:
         - key: APPPLAT_TEMPLATE_COMMIT_SHA
           value: ${_self.COMMIT_HASH}
 
+    # PostgREST - REST API server for Database (HTTP accessible)
     - name: rest
       image:
         registry_type: DOCKER_HUB
@@ -85,7 +86,7 @@ spec:
         tag: v12.2.3
       http_port: 3000
       instance_count: 1
-      instance_size_slug: basic-xxs
+      instance_size_slug: apps-s-1vcpu-0.5gb
       health_check:
         http_path: /
         initial_delay_seconds: 10
@@ -95,7 +96,7 @@ spec:
       envs:
         - key: PGRST_DB_URI
           scope: RUN_TIME
-          value: ${db.DATABASE_URL}
+          value: ${supabase-db.DATABASE_URL}
         - key: PGRST_DB_SCHEMAS
           value: public,storage
         - key: PGRST_DB_ANON_ROLE
@@ -118,7 +119,7 @@ spec:
         tag: v2.174.0
       http_port: 9999
       instance_count: 1
-      instance_size_slug: basic-xxs
+      instance_size_slug: apps-s-1vcpu-0.5gb
       health_check:
         http_path: /health
         initial_delay_seconds: 20
@@ -134,7 +135,7 @@ spec:
           value: postgres
         - key: GOTRUE_DB_DATABASE_URL
           scope: RUN_TIME
-          value: ${db.DATABASE_URL}
+          value: ${supabase-db.DATABASE_URL}
         - key: GOTRUE_SITE_URL
           scope: RUN_TIME
           value: ${APP_URL}
@@ -182,7 +183,7 @@ spec:
         tag: v1.11.1
       http_port: 5000
       instance_count: 1
-      instance_size_slug: basic-xxs
+      instance_size_slug: apps-s-1vcpu-0.5gb
       health_check:
         http_path: /status
         initial_delay_seconds: 20
@@ -208,7 +209,7 @@ spec:
           value: ${SUPABASE_JWT_SECRET}
         - key: DATABASE_URL
           scope: RUN_TIME
-          value: ${db.DATABASE_URL}
+          value: ${supabase-db.DATABASE_URL}
         - key: FILE_SIZE_LIMIT
           value: "52428800"
         - key: STORAGE_BACKEND
@@ -242,26 +243,26 @@ spec:
         repository: postgres-meta
         tag: v0.84.2
       instance_count: 1
-      instance_size_slug: basic-xxs
+      instance_size_slug: apps-s-1vcpu-0.5gb
       envs:
         - key: PG_META_PORT
           value: "8080"
         - key: PG_META_DB_HOST
           scope: RUN_TIME
-          value: ${db.HOSTNAME}
+          value: ${supabase-db.HOSTNAME}
         - key: PG_META_DB_PORT
           scope: RUN_TIME
-          value: ${db.PORT}
+          value: ${supabase-db.PORT}
         - key: PG_META_DB_NAME
           scope: RUN_TIME
-          value: ${db.DATABASE}
+          value: ${supabase-db.DATABASE}
         - key: PG_META_DB_USER
           scope: RUN_TIME
-          value: ${db.USERNAME}
+          value: ${supabase-db.USERNAME}
         - key: PG_META_DB_PASSWORD
           scope: RUN_TIME
           type: SECRET
-          value: ${db.PASSWORD}
+          value: ${supabase-db.PASSWORD}
 
   jobs:
     - name: db-init
@@ -271,14 +272,15 @@ spec:
       kind: POST_DEPLOY
       dockerfile_path: db-init/Dockerfile.dbinit
       instance_count: 1
-      instance_size_slug: basic-xxs
+      instance_size_slug: apps-s-1vcpu-0.5gb
       envs:
         - key: DATABASE_URL
           scope: RUN_TIME
-          value: ${db.DATABASE_URL}
+          value: ${supabase-db.DATABASE_URL}
   
   databases:
-    - name: db
+    - name: supabase-db
       engine: PG
       production: false
-      version: "15"
+      version: "17"
+      cluster_name: supabase-db
