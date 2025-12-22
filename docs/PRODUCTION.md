@@ -11,7 +11,10 @@ The production configuration ([.do/examples/production.yaml](../.do/examples/pro
 - Health checks and monitoring
 - Rate limiting configured
 
-**Estimated Cost**: $200-600/month depending on scale (vs. $37/month for dev)
+For detailed pricing information, see:
+- [App Platform Pricing](https://www.digitalocean.com/pricing/app-platform)
+- [Managed Database Pricing](https://www.digitalocean.com/pricing/managed-databases)
+- [Spaces Pricing](https://www.digitalocean.com/pricing/spaces)
 
 ## Upgrade Steps
 
@@ -33,9 +36,9 @@ doctl databases create supabase-prod \
 ```
 
 **Database Sizing Guide**:
-- Small production (< 100 concurrent users): `db-s-2vcpu-4gb`, 1 node, $120/month
-- Medium production (100-1000 users): `db-s-2vcpu-4gb`, 2 nodes (with standby), $240/month
-- Large production (1000+ users): `db-s-4vcpu-8gb`, 2 nodes, $480/month
+- Small production (< 100 concurrent users): `db-s-2vcpu-4gb`, 1 node
+- Medium production (100-1000 users): `db-s-2vcpu-4gb`, 2 nodes (with standby)
+- Large production (1000+ users): `db-s-4vcpu-8gb`, 2 nodes
 
 ### 2. Enable Auto-scaling
 
@@ -135,12 +138,10 @@ Total: ~194 connections needed at max scale
 Development (basic-xxs):
 - 512MB RAM, 1 vCPU
 - Good for testing and light workloads
-- $5/instance/month
 
 Production (professional-xs):
 - 1GB RAM, 1 vCPU
 - Better performance under load
-- $12/instance/month
 
 ### Caching Strategies
 
@@ -211,25 +212,6 @@ Before adding resources, check for:
 - Missing database indexes
 - Inefficient RLS policies
 - Large file uploads blocking workers
-
-## Cost Optimization
-
-### Development vs. Production Costs
-
-| Component | Development | Production | Notes |
-|-----------|-------------|------------|-------|
-| Services (5) | $25/month | $60-120/month | Based on instance count |
-| Database | $7/month (dev) | $120-480/month | Managed PostgreSQL |
-| Spaces | $5/month | $5-20/month | Based on storage usage |
-| **Total** | **$37/month** | **$185-620/month** | |
-
-### Tips to Reduce Costs
-
-1. Start with smaller managed database, upgrade as needed
-2. Use conservative autoscaling limits initially
-3. Enable caching to reduce database load
-4. Monitor and optimize expensive queries
-5. Use Spaces lifecycle policies to archive old files
 
 ## Additional Resources
 

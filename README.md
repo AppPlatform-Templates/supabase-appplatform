@@ -154,20 +154,9 @@ For email authentication, choose an SMTP provider:
 
 ## Pricing
 
-### Basic Deployment (Development)
+For detailed pricing information based on instance sizes and resources, visit the [DigitalOcean App Platform Pricing](https://www.digitalocean.com/pricing/app-platform) page.
 
-| Component | Monthly Cost |
-|-----------|--------------|
-| 5 Services (basic-xxs) | $25 |
-| Dev Database (1GB) | $7 |
-| Spaces (250GB storage) | $5 |
-| **Total** | **~$37/month** |
-
-### Production Deployment
-
-See [docs/PRODUCTION.md](./docs/PRODUCTION.md) for production configuration details.
-
-**Estimated**: $200-600/month with auto-scaling, managed PostgreSQL, and high availability.
+---
 
 ## Upgrading to Production
 

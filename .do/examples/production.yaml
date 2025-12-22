@@ -12,8 +12,6 @@
 # 3. Generate all JWT keys
 # 4. Configure SMTP (optional)
 #
-# Estimated Cost: $200-600/month depending on scale
-#
 # To use this configuration:
 # 1. Copy this file to .do/app.yaml
 # 2. Replace all placeholder values
