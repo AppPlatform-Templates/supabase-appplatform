@@ -92,8 +92,11 @@ services:
         value: ${supabase-db.DATABASE_URL}
       - key: PGRST_DB_SCHEMAS
         value: public
+      # Anonymous role for unauthenticated requests
+      # Using the default database user since App Platform dev databases
+      # don't allow creating custom roles
       - key: PGRST_DB_ANON_ROLE
-        value: anon
+        value: ${supabase-db.USERNAME}
       - key: PGRST_DB_POOL
         value: "10"
       - key: PGRST_SERVER_PORT
@@ -196,20 +199,6 @@ workers:
         scope: RUN_TIME
         type: SECRET
         value: ${supabase-db.PASSWORD}
-
-jobs:
-  - name: db-init
-    git:
-      repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
-      branch: main
-    kind: POST_DEPLOY
-    dockerfile_path: db-init/Dockerfile.dbinit
-    instance_count: 1
-    instance_size_slug: apps-s-1vcpu-0.5gb
-    envs:
-      - key: DATABASE_URL
-        scope: RUN_TIME
-        value: ${supabase-db.DATABASE_URL}
 
 databases:
   - name: supabase-db
