@@ -1,7 +1,6 @@
 spec:
   name: supabase
-  region: nyc
-  
+
   ingress:
     rules:
       - match:

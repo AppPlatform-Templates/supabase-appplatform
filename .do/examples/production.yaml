@@ -19,7 +19,6 @@
 
 spec:
   name: supabase-production
-  region: nyc
 
   # Production ingress routing
   ingress:
