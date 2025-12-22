@@ -40,14 +40,6 @@ services:
       - key: SUPABASE_PUBLIC_URL
         scope: RUN_TIME
         value: ${APP_URL}
-      - key: SUPABASE_ANON_KEY
-        scope: RUN_TIME
-        type: SECRET
-        value: ${SUPABASE_ANON_KEY}
-      - key: SUPABASE_SERVICE_KEY
-        scope: RUN_TIME
-        type: SECRET
-        value: ${SUPABASE_SERVICE_ROLE_KEY}
       - key: NEXT_PUBLIC_ENABLE_LOGS
         value: "false"
 
@@ -89,10 +81,6 @@ services:
         value: "10"
       - key: PGRST_SERVER_PORT
         value: "3000"
-      - key: PGRST_JWT_SECRET
-        scope: RUN_TIME
-        type: SECRET
-        value: ${SUPABASE_JWT_SECRET}
 
 workers:
   # Meta - Database Management API (internal only, accessed by Studio)
