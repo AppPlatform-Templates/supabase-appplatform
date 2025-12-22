@@ -5,8 +5,8 @@ FROM postgres:15-alpine
 RUN apk add --no-cache bash
 
 # Copy initialization files
-COPY init-db.sql /app/init-db.sql
-COPY run-db-init.sh /app/run-db-init.sh
+COPY db-init/init-db.sql /app/init-db.sql
+COPY scripts/run-db-init.sh /app/run-db-init.sh
 
 # Make the script executable
 RUN chmod +x /app/run-db-init.sh
