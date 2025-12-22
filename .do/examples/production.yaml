@@ -105,6 +105,14 @@ spec:
         - key: NEXT_PUBLIC_ENABLE_LOGS
           value: "true"
 
+        # Template Tracking (for DigitalOcean analytics)
+        - key: APPPLAT_BASE_TEMPLATE
+          value: "supabase"
+        - key: APPPLAT_TEMPLATE_TYPE
+          value: "production"
+        - key: APPPLAT_TEMPLATE_COMMIT_SHA
+          value: ${_self.COMMIT_HASH}
+
     # PostgREST - REST API (Production with auto-scaling)
     - name: rest
       image:
@@ -136,7 +144,7 @@ spec:
           type: SECRET
           value: ${MANAGED_DB_CONNECTION_STRING}
         - key: PGRST_DB_SCHEMAS
-          value: public,storage,graphql_public
+          value: public,storage
         - key: PGRST_DB_ANON_ROLE
           value: anon
         - key: PGRST_DB_POOL
@@ -152,14 +160,14 @@ spec:
         - key: PGRST_JWT_AUD
           value: authenticated
 
-  workers:
-    # GoTrue - Authentication (Production)
+    # GoTrue - Authentication Service (Production)
     - name: auth
       image:
         registry_type: DOCKER_HUB
         registry: supabase
         repository: gotrue
         tag: v2.174.0
+      http_port: 9999
       instance_size_slug: professional-xs
 
       autoscaling:
@@ -168,6 +176,14 @@ spec:
         metrics:
           cpu:
             percent: 70
+
+      health_check:
+        http_path: /health
+        initial_delay_seconds: 20
+        period_seconds: 10
+        timeout_seconds: 3
+        failure_threshold: 3
+        success_threshold: 1
 
       envs:
         - key: GOTRUE_API_HOST
@@ -224,43 +240,14 @@ spec:
         - key: GOTRUE_RATE_LIMIT_SMS_SENT
           value: "10"
 
-    # Meta - Database Management (Production)
-    - name: meta
-      image:
-        registry_type: DOCKER_HUB
-        registry: supabase
-        repository: postgres-meta
-        tag: v0.84.2
-      instance_size_slug: basic-xs
-      instance_count: 2
-
-      envs:
-        - key: PG_META_PORT
-          value: "8080"
-        - key: PG_META_DB_HOST
-          scope: RUN_TIME
-          value: ${MANAGED_DB_HOSTNAME}
-        - key: PG_META_DB_PORT
-          scope: RUN_TIME
-          value: ${MANAGED_DB_PORT}
-        - key: PG_META_DB_NAME
-          scope: RUN_TIME
-          value: ${MANAGED_DB_DATABASE}
-        - key: PG_META_DB_USER
-          scope: RUN_TIME
-          value: ${MANAGED_DB_USERNAME}
-        - key: PG_META_DB_PASSWORD
-          scope: RUN_TIME
-          type: SECRET
-          value: ${MANAGED_DB_PASSWORD}
-
-    # Storage - File Management (Production)
+    # Storage - File Management Service (Production)
     - name: storage
       image:
         registry_type: DOCKER_HUB
         registry: supabase
         repository: storage-api
         tag: v1.11.1
+      http_port: 5000
       instance_size_slug: professional-xs
 
       autoscaling:
@@ -270,7 +257,17 @@ spec:
           cpu:
             percent: 70
 
+      health_check:
+        http_path: /status
+        initial_delay_seconds: 20
+        period_seconds: 10
+        timeout_seconds: 3
+        failure_threshold: 3
+        success_threshold: 1
+
       envs:
+        - key: SERVER_PORT
+          value: "5000"
         - key: ANON_KEY
           scope: RUN_TIME
           type: SECRET
@@ -314,11 +311,45 @@ spec:
           type: SECRET
           value: ${SPACES_SECRET_KEY}
 
+  workers:
+    # Meta - Database Management API (internal only, accessed by Studio)
+    - name: meta
+      image:
+        registry_type: DOCKER_HUB
+        registry: supabase
+        repository: postgres-meta
+        tag: v0.84.2
+      instance_size_slug: basic-xs
+      instance_count: 2
+
+      envs:
+        - key: PG_META_PORT
+          value: "8080"
+        - key: PG_META_DB_HOST
+          scope: RUN_TIME
+          value: ${MANAGED_DB_HOSTNAME}
+        - key: PG_META_DB_PORT
+          scope: RUN_TIME
+          value: ${MANAGED_DB_PORT}
+        - key: PG_META_DB_NAME
+          scope: RUN_TIME
+          value: ${MANAGED_DB_DATABASE}
+        - key: PG_META_DB_USER
+          scope: RUN_TIME
+          value: ${MANAGED_DB_USERNAME}
+        - key: PG_META_DB_PASSWORD
+          scope: RUN_TIME
+          type: SECRET
+          value: ${MANAGED_DB_PASSWORD}
+
   jobs:
     # Database Initialization (runs after deployment)
     - name: db-init
+      git:
+        repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
+        branch: main
       kind: POST_DEPLOY
-      dockerfile_path: Dockerfile.dbinit
+      dockerfile_path: db-init/Dockerfile.dbinit
       instance_count: 1
       instance_size_slug: basic-xxs
 

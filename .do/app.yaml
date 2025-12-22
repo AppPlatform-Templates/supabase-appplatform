@@ -70,7 +70,15 @@ spec:
           value: ${SUPABASE_SERVICE_ROLE_KEY}
         - key: NEXT_PUBLIC_ENABLE_LOGS
           value: "false"
-  
+
+        # Template Tracking (for DigitalOcean analytics)
+        - key: APPPLAT_BASE_TEMPLATE
+          value: "supabase"
+        - key: APPPLAT_TEMPLATE_TYPE
+          value: "simple"
+        - key: APPPLAT_TEMPLATE_COMMIT_SHA
+          value: ${_self.COMMIT_HASH}
+
     - name: rest
       image:
         registry_type: DOCKER_HUB
@@ -91,7 +99,7 @@ spec:
           scope: RUN_TIME
           value: ${db.DATABASE_URL}
         - key: PGRST_DB_SCHEMAS
-          value: public,storage,graphql_public
+          value: public,storage
         - key: PGRST_DB_ANON_ROLE
           value: anon
         - key: PGRST_DB_POOL
@@ -102,7 +110,7 @@ spec:
           scope: RUN_TIME
           type: SECRET
           value: ${SUPABASE_JWT_SECRET}
-  
+
     # GoTrue - Authentication Service (HTTP accessible)
     - name: auth
       image:
@@ -113,6 +121,12 @@ spec:
       http_port: 9999
       instance_count: 1
       instance_size_slug: basic-xxs
+      health_check:
+        http_path: /health
+        initial_delay_seconds: 20
+        period_seconds: 10
+        timeout_seconds: 3
+        failure_threshold: 3
       envs:
         - key: GOTRUE_API_HOST
           value: "0.0.0.0"
@@ -168,8 +182,15 @@ spec:
         registry: supabase
         repository: storage-api
         tag: v1.11.1
+      http_port: 5000
       instance_count: 1
       instance_size_slug: basic-xxs
+      health_check:
+        http_path: /status
+        initial_delay_seconds: 20
+        period_seconds: 10
+        timeout_seconds: 3
+        failure_threshold: 3
       envs:
         - key: SERVER_PORT
           value: "5000"
@@ -250,7 +271,7 @@ spec:
         repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
         branch: main
       kind: POST_DEPLOY
-      dockerfile_path: Dockerfile.dbinit
+      dockerfile_path: db-init/Dockerfile.dbinit
       instance_count: 1
       instance_size_slug: basic-xxs
       envs:

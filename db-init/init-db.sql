@@ -21,9 +21,7 @@ END $$;
 -- Create schemas
 CREATE SCHEMA IF NOT EXISTS auth;
 CREATE SCHEMA IF NOT EXISTS storage;
-CREATE SCHEMA IF NOT EXISTS _realtime;
 CREATE SCHEMA IF NOT EXISTS extensions;
-CREATE SCHEMA IF NOT EXISTS graphql_public;
 
 -- Install extensions (must be superuser or have appropriate privileges)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
@@ -98,9 +96,6 @@ GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA storage TO supabase_storage_admin;
 
--- Realtime schema permissions
-GRANT USAGE ON SCHEMA _realtime TO authenticated, service_role;
-
 -- Extensions schema permissions
 GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO anon, authenticated, service_role;
@@ -114,7 +109,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authen
 DO $$
 BEGIN
     RAISE NOTICE '✓ Supabase database initialization complete!';
-    RAISE NOTICE '  - Schemas: auth, storage, _realtime, extensions, graphql_public';
+    RAISE NOTICE '  - Schemas: auth, storage, extensions';
     RAISE NOTICE '  - Extensions: uuid-ossp, pgcrypto, pgjwt';
     RAISE NOTICE '  - Roles: anon, authenticated, service_role, supabase_auth_admin, supabase_storage_admin';
 END $$;
