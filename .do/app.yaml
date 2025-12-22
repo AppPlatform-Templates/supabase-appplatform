@@ -24,6 +24,12 @@ services:
     http_port: 3000
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-0.5gb
+    health_check:
+      http_path: /api/platform/profile
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      failure_threshold: 3
     envs:
       - key: STUDIO_PG_META_URL
         value: http://meta:8080
