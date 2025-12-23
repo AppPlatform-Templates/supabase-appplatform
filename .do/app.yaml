@@ -33,9 +33,20 @@ services:
     envs:
       - key: STUDIO_PG_META_URL
         value: http://meta:8080
+      - key: POSTGRES_HOST
+        scope: RUN_TIME
+        value: ${supabase-db.HOSTNAME}
+      - key: POSTGRES_PORT
+        scope: RUN_TIME
+        value: ${supabase-db.PORT}
+      - key: POSTGRES_DB
+        scope: RUN_TIME
+        value: ${supabase-db.DATABASE}
       - key: POSTGRES_PASSWORD
         scope: RUN_TIME
         value: ${supabase-db.PASSWORD}
+      - key: PG_META_CRYPTO_KEY
+        value: "dev-only-encryption-key-change-in-production-32chars"
       - key: DEFAULT_ORGANIZATION_NAME
         value: "My Organization"
       - key: DEFAULT_PROJECT_NAME
@@ -48,8 +59,6 @@ services:
         value: ${APP_URL}
       - key: NEXT_PUBLIC_ENABLE_LOGS
         value: "false"
-      - key: CRYPTO_KEY
-        value: "dev-only-encryption-key-change-in-production-32chars"
 
       # Template Tracking (for DigitalOcean analytics)
       - key: APPPLAT_BASE_TEMPLATE
@@ -122,7 +131,7 @@ services:
         value: ${supabase-db.PASSWORD}
       - key: PG_META_DB_SSL_MODE
         value: "require"
-      - key: CRYPTO_KEY
+      - key: PG_META_CRYPTO_KEY
         value: "dev-only-encryption-key-change-in-production-32chars"
 
 databases:

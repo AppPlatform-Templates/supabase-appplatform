@@ -76,10 +76,21 @@ services:
     envs:
       - key: STUDIO_PG_META_URL
         value: http://meta:8080
+      - key: POSTGRES_HOST
+        scope: RUN_TIME
+        value: ${MANAGED_DB_HOSTNAME}
+      - key: POSTGRES_PORT
+        scope: RUN_TIME
+        value: ${MANAGED_DB_PORT}
+      - key: POSTGRES_DB
+        scope: RUN_TIME
+        value: ${MANAGED_DB_DATABASE}
       - key: POSTGRES_PASSWORD
         scope: RUN_TIME
         type: SECRET
         value: ${MANAGED_DB_PASSWORD}
+      - key: PG_META_CRYPTO_KEY
+        value: "dev-only-encryption-key-change-in-production-32chars"
       - key: DEFAULT_ORGANIZATION_NAME
         value: "Production"
       - key: DEFAULT_PROJECT_NAME
@@ -100,8 +111,6 @@ services:
         value: ${SUPABASE_SERVICE_ROLE_KEY}
       - key: NEXT_PUBLIC_ENABLE_LOGS
         value: "true"
-      - key: CRYPTO_KEY
-        value: "dev-only-encryption-key-change-in-production-32chars"
 
       # Template Tracking (for DigitalOcean analytics)
       - key: APPPLAT_BASE_TEMPLATE
@@ -341,7 +350,7 @@ workers:
         value: ${MANAGED_DB_PASSWORD}
       - key: PG_META_DB_SSL_MODE
         value: "require"
-      - key: CRYPTO_KEY
+      - key: PG_META_CRYPTO_KEY
         value: "dev-only-encryption-key-change-in-production-32chars"
 
 jobs:
