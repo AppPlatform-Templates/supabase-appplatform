@@ -132,7 +132,7 @@ spec:
           value: ${supabase-db.PASSWORD}
         - key: PG_META_DB_SSL_MODE
           value: "require"
-        - key: PG_META_CRYPTO_KEY
+        - key: CRYPTO_KEY
           value: "dev-only-encryption-key-change-in-production-32chars"
 
   databases:
