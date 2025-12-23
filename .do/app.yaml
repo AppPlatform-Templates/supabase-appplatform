@@ -118,8 +118,8 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: ${supabase-db.PASSWORD}
-      - key: PG_META_DB_SSL_ENABLED
-        value: "true"
+      - key: PG_META_DB_SSL_MODE
+        value: "require"
       - key: CRYPTO_KEY
         value: "dev-only-encryption-key-change-in-production-32chars"
 

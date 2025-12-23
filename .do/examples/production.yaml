@@ -337,6 +337,10 @@ workers:
         scope: RUN_TIME
         type: SECRET
         value: ${MANAGED_DB_PASSWORD}
+      - key: PG_META_DB_SSL_MODE
+        value: "require"
+      - key: CRYPTO_KEY
+        value: "dev-only-encryption-key-change-in-production-32chars"
 
 jobs:
   # Database Initialization (runs after deployment)
