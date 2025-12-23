@@ -88,7 +88,6 @@ services:
       - key: PGRST_SERVER_PORT
         value: "3000"
 
-workers:
   # Meta - Database Management API (internal only, accessed by Studio)
   - name: meta
     image:
@@ -96,6 +95,7 @@ workers:
       registry: supabase
       repository: postgres-meta
       tag: v0.84.2
+    http_port: 8080
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-0.5gb
     envs:
