@@ -121,6 +121,8 @@ spec:
           value: ${supabase-db.PASSWORD}
         - key: PG_META_DB_SSL_ENABLED
           value: "true"
+        - key: CRYPTO_KEY
+          value: "dev-only-encryption-key-change-in-production-32chars"
 
   databases:
     - name: supabase-db
