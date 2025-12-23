@@ -48,6 +48,8 @@ services:
         value: ${APP_URL}
       - key: NEXT_PUBLIC_ENABLE_LOGS
         value: "false"
+      - key: CRYPTO_KEY
+        value: "dev-only-encryption-key-change-in-production-32chars"
 
       # Template Tracking (for DigitalOcean analytics)
       - key: APPPLAT_BASE_TEMPLATE
