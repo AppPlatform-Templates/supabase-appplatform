@@ -57,6 +57,14 @@ spec:
         - key: SUPABASE_PUBLIC_URL
           scope: RUN_TIME
           value: ${APP_URL}
+        - key: SUPABASE_ANON_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_ANON_KEY}
+        - key: SUPABASE_SERVICE_KEY
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_SERVICE_ROLE_KEY}
         - key: NEXT_PUBLIC_ENABLE_LOGS
           value: "false"
 
@@ -91,14 +99,20 @@ spec:
         - key: PGRST_DB_SCHEMAS
           value: public
         # Anonymous role for unauthenticated requests
-        # Using the default database user since App Platform dev databases
-        # don't allow creating custom roles
+        # Created by db-init job on managed database
         - key: PGRST_DB_ANON_ROLE
-          value: ${supabase-db.USERNAME}
+          value: anon
         - key: PGRST_DB_POOL
           value: "10"
         - key: PGRST_SERVER_PORT
           value: "3000"
+        # JWT Configuration (required for authentication)
+        - key: PGRST_JWT_SECRET
+          scope: RUN_TIME
+          type: SECRET
+          value: ${SUPABASE_JWT_SECRET}
+        - key: PGRST_JWT_AUD
+          value: authenticated
 
     # Meta - Database Management API (internal only, accessed by Studio)
     - name: meta
@@ -132,12 +146,31 @@ spec:
           value: ${supabase-db.PASSWORD}
         - key: PG_META_DB_SSL_MODE
           value: "require"
+        - key: PG_META_DB_SSL_ROOT_CERT
+          scope: RUN_TIME
+          value: ${supabase-db.CA_CERT}
         - key: CRYPTO_KEY
           value: "dev-only-encryption-key-change-in-production-32chars"
+
+  jobs:
+    # Database Initialization (runs after deployment)
+    - name: db-init
+      git:
+        repo_clone_url: https://github.com/digitalocean/supabase-appplatform.git
+        branch: main
+      kind: POST_DEPLOY
+      dockerfile_path: db-init/Dockerfile.dbinit
+      instance_count: 1
+      instance_size_slug: apps-s-1vcpu-0.5gb
+      envs:
+        - key: DATABASE_URL
+          scope: RUN_TIME
+          type: SECRET
+          value: ${supabase-db.DATABASE_URL}
 
   databases:
     - name: supabase-db
       engine: PG
-      production: false
+      production: true
       version: "17"
       cluster_name: supabase-db

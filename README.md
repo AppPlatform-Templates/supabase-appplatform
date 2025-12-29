@@ -1,8 +1,8 @@
 # Supabase on DigitalOcean App Platform
 
-[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/AppPlatform-Templates/supabase-appplatform/tree/main)
+Deploy your own Supabase instance on DigitalOcean App Platform with a managed PostgreSQL database. This template provides a simplified, production-ready Supabase setup optimized for App Platform.
 
-Deploy your own Supabase instance on DigitalOcean App Platform in minutes! This template provides a production-ready Supabase setup optimized for App Platform.
+> **Important**: This template requires a managed PostgreSQL database to be created before deployment. See [Setup Guide](./docs/SETUP.md) for step-by-step instructions.
 
 ## What is Supabase?
 
@@ -17,102 +17,126 @@ Perfect for building modern web and mobile applications without managing backend
 
 ## Architecture
 
-This deployment includes:
+This simplified deployment includes:
 
 | Component | Purpose | Type |
 |-----------|---------|------|
 | **Studio** | Web admin dashboard | Service (HTTP) |
 | **PostgREST** | Auto-generated REST API | Service (HTTP) |
-| **GoTrue** | Authentication service | Service (HTTP via ingress) |
-| **Storage** | File upload/download API | Service (HTTP via ingress) |
-| **Meta** | Database management API | Worker (Internal) |
-| **PostgreSQL** | Database (with extensions) | Managed Database (Dev tier) |
-| **Spaces** | Object storage | DigitalOcean Spaces |
+| **Meta** | Database management API | Service (Internal) |
+| **PostgreSQL** | Database (with extensions) | Managed Database (Production) |
 | **DB Init** | Automatic schema setup | Post-deploy Job |
+
+> **Note**: This is a simplified template. For authentication (GoTrue) and file storage, see the [Production Template](./docs/PRODUCTION.md).
 
 ### Routing
 
 All requests are handled by App Platform ingress:
 - `https://your-app.ondigitalocean.app/` → Studio dashboard
 - `https://your-app.ondigitalocean.app/rest/v1/*` → PostgREST API
-- `https://your-app.ondigitalocean.app/auth/v1/*` → Authentication
-- `https://your-app.ondigitalocean.app/storage/v1/*` → File storage
 
 ## Prerequisites
 
-**Prerequisites: (⚠️ MUST DO)**
-- **DigitalOcean Account** with payment method
-- **JWT Keys** - Generate with: `openssl rand -base64 32` for JWT secret, then create ANON and SERVICE_ROLE keys at [jwt.io](https://jwt.io)
-- **Spaces Bucket** - For file storage (auto-created via Deploy to DO button)
-- **(Optional) SMTP Credentials** - For email authentication (see [SMTP Providers](#smtp-providers))
+Before deploying, you need:
 
-## Quick Deploy (5 Minutes)
+- **DigitalOcean Account** with billing enabled
+- **doctl CLI** - [Install and authenticate](https://docs.digitalocean.com/reference/doctl/how-to/install/)
+- **Managed PostgreSQL Database** - Must be created before deployment
+- **JWT Keys** - Generated using the provided script
 
-### Option 1: Deploy to DO Button (Easiest)
+**Estimated Cost**: ~$30-35/month (Managed PostgreSQL + App Platform services)
 
-1. **Click the button above** or visit [this link](https://cloud.digitalocean.com/apps/new?repo=https://github.com/AppPlatform-Templates/supabase-appplatform/tree/main)
+## Quick Start
 
-2. **Generate JWT keys**:
-   ```bash
-   # Clone and generate keys
-   git clone https://github.com/AppPlatform-Templates/supabase-appplatform.git
-   cd supabase-appplatform
-   chmod +x scripts/generate-keys.sh
-   ./scripts/generate-keys.sh
-   ```
+Follow these steps to deploy Supabase:
 
-3. **Configure environment variables** in App Platform:
-   - `SUPABASE_JWT_SECRET`
-   - `SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `SPACES_BUCKET`, `SPACES_REGION`, `SPACES_ACCESS_KEY`, `SPACES_SECRET_KEY`
-
-4. **Deploy** and wait 5-10 minutes
-
-### Option 2: Deploy with doctl CLI
+### Step 1: Clone the Repository
 
 ```bash
-# 1. Clone and generate keys
-git clone https://github.com/AppPlatform-Templates/supabase-appplatform.git
+git clone https://github.com/digitalocean/supabase-appplatform.git
 cd supabase-appplatform
+```
+
+### Step 2: Generate JWT Keys
+
+```bash
 chmod +x scripts/generate-keys.sh
 ./scripts/generate-keys.sh
-
-# 2. Update .do/app.yaml with your environment variables
-
-# 3. Create the app
-doctl apps create --spec .do/app.yaml
-
-# 4. Monitor deployment
-doctl apps list
 ```
+
+Save the generated keys - you'll need them for deployment.
+
+### Step 3: Create Managed Database
+
+```bash
+doctl databases create supabase-db \
+  --engine pg \
+  --version 17 \
+  --size db-s-1vcpu-2gb \
+  --region nyc3
+```
+
+Wait for the database to be online (5-10 minutes).
+
+### Step 4: Configure Environment Variables
+
+Set the JWT keys as App Platform environment variables (see [SETUP.md](./docs/SETUP.md) for details):
+- `SUPABASE_JWT_SECRET`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+### Step 5: Deploy
+
+```bash
+doctl apps create --spec .do/app.yaml
+```
+
+Deployment takes 10-15 minutes. The `db-init` job will automatically set up your database with required schemas and roles.
+
+**For detailed step-by-step instructions, see [SETUP.md](./docs/SETUP.md)**
 
 ## Post-Deployment
 
 ### Access Your Instance
 
-Visit your app URL (e.g., `https://supabase-xyz.ondigitalocean.app`) to access Studio.
-
-### Test APIs
+Get your app URL and access Supabase Studio:
 
 ```bash
+# Get your app ID
+APP_ID=$(doctl apps list --format ID --no-header)
+
 # Get your app URL
 APP_URL=$(doctl apps get $APP_ID --format DefaultIngress --no-header)
+echo "Visit: https://$APP_URL"
+```
 
-# Test REST API
-curl https://$APP_URL/rest/v1/ -H "apikey: $SUPABASE_ANON_KEY"
+Open the URL in your browser to access the Studio dashboard.
 
-# Test Auth API
-curl https://$APP_URL/auth/v1/health
+### Verify Database Initialization
 
-# Test Storage API
-curl https://$APP_URL/storage/v1/bucket -H "apikey: $SUPABASE_ANON_KEY"
+Check that the database was properly initialized:
+
+```bash
+# Check db-init job logs
+doctl apps logs $APP_ID --component db-init
+```
+
+You should see confirmation that schemas, roles, and extensions were created.
+
+### Test the REST API
+
+```bash
+# Create a test table in Studio, then query it via REST API
+curl https://$APP_URL/rest/v1/ \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Authorization: Bearer $SUPABASE_ANON_KEY"
 ```
 
 ## Documentation
 
+- **[Setup Guide](./docs/SETUP.md)** - Detailed deployment instructions
 - **[Getting Started Guide](./docs/GETTING-STARTED.md)** - Build your first app with Supabase
-- **[Production Setup](./docs/PRODUCTION.md)** - Upgrade to production configuration
+- **[Production Setup](./docs/PRODUCTION.md)** - Add authentication and file storage
 - **[Troubleshooting](./docs/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Version Info](./docs/VERSION.md)** - Component versions and updates
 
@@ -122,35 +146,23 @@ curl https://$APP_URL/storage/v1/bucket -H "apikey: $SUPABASE_ANON_KEY"
 
 | Variable | Description | How to Generate |
 |----------|-------------|-----------------|
-| `SUPABASE_JWT_SECRET` | Secret for signing JWTs | `openssl rand -base64 32` |
-| `SUPABASE_ANON_KEY` | JWT for anonymous access | See [scripts/generate-keys.sh](./scripts/generate-keys.sh) |
-| `SUPABASE_SERVICE_ROLE_KEY` | JWT for admin access | See [scripts/generate-keys.sh](./scripts/generate-keys.sh) |
-| `SPACES_BUCKET` | Spaces bucket name | `supabase-<unique-name>` |
-| `SPACES_REGION` | Spaces region | `nyc3`, `sfo3`, `ams3`, etc. |
-| `SPACES_ACCESS_KEY` | Spaces access key ID | `doctl spaces access create` |
-| `SPACES_SECRET_KEY` | Spaces secret key | `doctl spaces access create` |
+| `SUPABASE_JWT_SECRET` | Secret for signing JWTs | Use `scripts/generate-keys.sh` |
+| `SUPABASE_ANON_KEY` | JWT for anonymous access | Use `scripts/generate-keys.sh` |
+| `SUPABASE_SERVICE_ROLE_KEY` | JWT for admin access | Use `scripts/generate-keys.sh` |
 
-### Optional (SMTP)
+All JWT keys are automatically generated by running the `scripts/generate-keys.sh` script. The script uses a cryptographically secure method to create these keys.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SMTP_HOST` | SMTP server hostname | _(empty)_ |
-| `SMTP_PORT` | SMTP server port | `587` |
-| `SMTP_USER` | SMTP username | _(empty)_ |
-| `SMTP_PASS` | SMTP password | _(empty)_ |
-| `SMTP_ADMIN_EMAIL` | From email address | _(empty)_ |
+### Database Connection (Auto-Injected)
 
-## SMTP Providers
+These variables are automatically provided by App Platform when you reference the managed database:
 
-For email authentication, choose an SMTP provider:
-
-| Provider | Free Tier | Setup |
-|----------|-----------|-------|
-| **SendGrid** | 100 emails/day | [signup](https://sendgrid.com) → API Keys → Create |
-| **Brevo** | 300 emails/day | [signup](https://brevo.com) → SMTP & API → SMTP |
-| **Mailgun** | 5,000 emails/month | [signup](https://mailgun.com) → Sending → Domain settings |
-| **Amazon SES** | 62,000/month | [setup guide](https://docs.aws.amazon.com/ses/latest/dg/send-email-smtp.html) |
-| **Resend** | 3,000 emails/month | [signup](https://resend.com) → API Keys → Create |
+- `${supabase-db.HOSTNAME}` - Database host
+- `${supabase-db.PORT}` - Database port
+- `${supabase-db.DATABASE}` - Database name
+- `${supabase-db.USERNAME}` - Database user
+- `${supabase-db.PASSWORD}` - Database password
+- `${supabase-db.DATABASE_URL}` - Full connection string
+- `${supabase-db.CA_CERT}` - SSL certificate for secure connections
 
 ## Pricing
 
@@ -158,14 +170,31 @@ For detailed pricing information based on instance sizes and resources, visit th
 
 ---
 
-## Upgrading to Production
+## Adding More Features
 
-Ready for production? See our [Production Setup Guide](./docs/PRODUCTION.md) for:
-- Managed PostgreSQL configuration
-- Auto-scaling setup
-- Custom domains
-- Monitoring and backups
-- Security hardening
+This template provides the core Supabase functionality. To add more features:
+
+### Authentication (GoTrue)
+Add user authentication with email, magic links, and OAuth. See [Production Setup](./docs/PRODUCTION.md) for:
+- GoTrue authentication service
+- SMTP configuration for email verification
+- Social OAuth providers
+- JWT-based authentication
+
+### File Storage
+Add file upload/download capabilities. See [Production Setup](./docs/PRODUCTION.md) for:
+- Storage API service
+- DigitalOcean Spaces integration
+- File access controls
+- Public and private buckets
+
+### Production Optimizations
+Upgrade your deployment with:
+- Auto-scaling (2-10 instances per service)
+- Larger instance sizes for better performance
+- Custom domains with SSL
+- Advanced monitoring and alerting
+- Automated database backups
 
 ## Security Best Practices
 
@@ -178,14 +207,17 @@ Ready for production? See our [Production Setup Guide](./docs/PRODUCTION.md) for
 
 See [docs/PRODUCTION.md](./docs/PRODUCTION.md) for complete security checklist.
 
-## Limitations
+## What's Not Included
 
-- **Dev Database**: 1GB storage limit (upgrade to managed database for more)
-- **No Realtime**: WebSocket subscriptions not configured (Redis required)
-- **No Edge Functions**: Deno runtime not included
-- **Single Region**: One deployment per region
+This simplified template focuses on core database and API functionality. The following are not included but can be added:
 
-See [docs/VERSION.md](./docs/VERSION.md) for component version details.
+- **Authentication (GoTrue)**: User signup, login, OAuth - see [Production Setup](./docs/PRODUCTION.md)
+- **File Storage**: Upload/download files - see [Production Setup](./docs/PRODUCTION.md)
+- **Realtime**: WebSocket subscriptions (requires Redis and additional configuration)
+- **Edge Functions**: Deno serverless functions (not supported on App Platform)
+- **Multi-region**: Deploy to multiple regions for global coverage
+
+See [docs/VERSION.md](./docs/VERSION.md) for current component versions.
 
 ## Resources
 

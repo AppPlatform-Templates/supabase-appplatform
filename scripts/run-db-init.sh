@@ -24,8 +24,17 @@ fi
 echo "Running database initialization script..."
 echo ""
 
+# Extract the database password from DATABASE_URL
+# Format: postgresql://user:password@host:port/dbname
+DB_PASSWORD=$(echo "$DATABASE_URL" | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p')
+
 # Run the initialization script
 psql "$DATABASE_URL" -f /app/init-db.sql
+
+# Set supabase_admin password to match the database password
+echo ""
+echo "Setting supabase_admin password..."
+PGPASSWORD="$DB_PASSWORD" psql "$DATABASE_URL" -c "ALTER USER supabase_admin WITH PASSWORD '$DB_PASSWORD';"
 
 exit_code=$?
 

@@ -76,6 +76,23 @@ BEGIN
         CREATE ROLE supabase_storage_admin NOLOGIN NOINHERIT;
         RAISE NOTICE 'Created role: supabase_storage_admin';
     END IF;
+
+    -- Create supabase_admin as a LOGIN user for Meta/Studio
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+        -- Use the same password as the main database user
+        -- This will be set from the DATABASE_URL environment variable
+        CREATE ROLE supabase_admin LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION;
+        RAISE NOTICE 'Created login user: supabase_admin';
+    END IF;
+END $$;
+
+-- Set supabase_admin password to match the main database password
+-- The password is extracted from DATABASE_URL by the wrapper script
+DO $$
+BEGIN
+    -- Grant supabase_admin the same privileges as doadmin
+    GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
+    RAISE NOTICE 'Granted privileges to supabase_admin';
 END $$;
 
 -- Grant permissions on public schema
