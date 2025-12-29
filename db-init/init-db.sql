@@ -77,17 +77,20 @@ BEGIN
         RAISE NOTICE 'Created role: supabase_storage_admin';
     END IF;
 
-    -- Ensure supabase_admin exists as a LOGIN user (not just a role)
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
-        -- User/role exists, update it to have LOGIN privileges and password
-        EXECUTE format('ALTER ROLE supabase_admin WITH LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION PASSWORD %L', :admin_password);
-        RAISE NOTICE 'Updated existing supabase_admin with LOGIN privileges and password';
+    -- Create supabase_admin if it doesn't exist (password will be set below)
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+        CREATE ROLE supabase_admin LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION;
+        RAISE NOTICE 'Created role: supabase_admin';
     ELSE
-        -- Create new supabase_admin user with LOGIN privileges and password
-        EXECUTE format('CREATE ROLE supabase_admin LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION PASSWORD %L', :admin_password);
-        RAISE NOTICE 'Created new login user: supabase_admin with password';
+        -- Ensure existing role has LOGIN privileges
+        ALTER ROLE supabase_admin WITH LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION;
+        RAISE NOTICE 'Updated role supabase_admin with LOGIN privileges';
     END IF;
 END $$;
+
+-- Set password for supabase_admin (must be outside DO block for psql variable substitution)
+\set password_sql 'ALTER ROLE supabase_admin WITH PASSWORD ' :'admin_password'
+:password_sql;
 
 -- Grant privileges to supabase_admin
 DO $$
