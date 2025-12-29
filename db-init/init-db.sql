@@ -93,9 +93,12 @@ END $$;
 \set password_sql 'ALTER ROLE supabase_admin WITH PASSWORD ' :'admin_password'
 :password_sql;
 
--- Grant extensive privileges to supabase_admin (everything except SUPERUSER)
+-- Grant extensive privileges to supabase_admin
 GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
-GRANT postgres TO supabase_admin;  -- Grant postgres role to supabase_admin
+
+-- Grant membership in doadmin role to inherit its privileges
+-- This allows supabase_admin to have similar capabilities to doadmin
+GRANT doadmin TO supabase_admin;
 
 -- Grant permissions on public schema
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
