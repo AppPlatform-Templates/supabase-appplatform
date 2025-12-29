@@ -96,12 +96,20 @@ END $$;
 -- Grant extensive privileges to supabase_admin
 GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
 
--- Grant membership in doadmin role to inherit its privileges
--- This allows supabase_admin to have similar capabilities to doadmin
-GRANT doadmin TO supabase_admin;
-
--- Grant postgres role to allow SET ROLE postgres (needed for schema creation)
-GRANT postgres TO supabase_admin WITH ADMIN OPTION;
+-- Test if doadmin (current user) can SET ROLE postgres
+-- This will help us understand the limitations of the managed database
+DO $$
+BEGIN
+    -- Try to SET ROLE postgres
+    EXECUTE 'SET ROLE postgres';
+    RAISE NOTICE '✓ SUCCESS: doadmin can SET ROLE postgres';
+    -- Reset back to doadmin
+    EXECUTE 'RESET ROLE';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '✗ CANNOT SET ROLE postgres: %', SQLERRM;
+        RAISE NOTICE 'This is expected on managed databases - proceeding with doadmin privileges';
+END $$;
 
 -- Grant permissions on public schema
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;

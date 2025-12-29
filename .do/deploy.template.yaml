@@ -131,27 +131,13 @@ spec:
       envs:
         - key: PG_META_PORT
           value: "8080"
-        - key: PG_META_DB_HOST
-          scope: RUN_TIME
-          value: ${supabase-db.HOSTNAME}
-        - key: PG_META_DB_PORT
-          scope: RUN_TIME
-          value: ${supabase-db.PORT}
-        - key: PG_META_DB_NAME
-          scope: RUN_TIME
-          value: ${supabase-db.DATABASE}
-        - key: PG_META_DB_USER
-          scope: RUN_TIME
-          value: ${supabase-db.USERNAME}
-        - key: PG_META_DB_PASSWORD
+        # Use direct database connection as doadmin
+        # Since Studio is configured with POSTGRES_USER: doadmin, the encrypted
+        # connection strings should also use doadmin credentials
+        - key: PG_META_DB_URL
           scope: RUN_TIME
           type: SECRET
-          value: ${supabase-db.PASSWORD}
-        - key: PG_META_DB_SSL_MODE
-          value: "require"
-        - key: PG_META_DB_SSL_ROOT_CERT
-          scope: RUN_TIME
-          value: ${supabase-db.CA_CERT}
+          value: ${supabase-db.DATABASE_URL}
         - key: CRYPTO_KEY
           value: "dev-only-encryption-key-change-in-production-32chars"
 
