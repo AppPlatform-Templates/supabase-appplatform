@@ -76,29 +76,11 @@ BEGIN
         CREATE ROLE supabase_storage_admin NOLOGIN NOINHERIT;
         RAISE NOTICE 'Created role: supabase_storage_admin';
     END IF;
-
-    -- Create supabase_admin if it doesn't exist (password will be set below)
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
-        CREATE ROLE supabase_admin LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION;
-        RAISE NOTICE 'Created role: supabase_admin';
-    ELSE
-        -- Ensure existing role has LOGIN privileges
-        ALTER ROLE supabase_admin WITH LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION;
-        RAISE NOTICE 'Updated role supabase_admin with LOGIN privileges';
-    END IF;
 END $$;
 
--- Set password for supabase_admin (must be outside DO block for psql variable substitution)
-\set password_sql 'ALTER ROLE supabase_admin WITH PASSWORD ' :'admin_password'
-:password_sql;
-
--- Grant privileges to supabase_admin
-DO $$
-BEGIN
-    -- Grant supabase_admin the same privileges as doadmin
-    GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
-    RAISE NOTICE 'Granted privileges to supabase_admin';
-END $$;
+-- Note: We use doadmin for Meta/Studio connections instead of creating a separate
+-- supabase_admin user because DigitalOcean managed databases don't allow creating
+-- arbitrary SUPERUSER roles (only doadmin is permitted)
 
 -- Grant permissions on public schema
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;

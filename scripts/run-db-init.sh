@@ -24,13 +24,10 @@ fi
 echo "Running database initialization script..."
 echo ""
 
-# Extract the database password from DATABASE_URL
-# Format: postgresql://user:password@host:port/dbname
-DB_PASSWORD=$(echo "$DATABASE_URL" | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p')
-
-# Run the initialization script with the password as a variable
-echo "Extracted database password for supabase_admin user"
-psql "$DATABASE_URL" -v admin_password="$DB_PASSWORD" -f /app/init-db.sql
+# Run the initialization script
+# Note: We use doadmin (from DATABASE_URL) for Meta/Studio connections
+# instead of creating a separate supabase_admin user
+psql "$DATABASE_URL" -f /app/init-db.sql
 
 exit_code=$?
 
