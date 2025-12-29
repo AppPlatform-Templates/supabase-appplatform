@@ -142,18 +142,24 @@ spec:
           scope: RUN_TIME
           type: SECRET
           value: ${supabase-db.DATABASE_URL}
+        # SSL configuration for managed database connections
+        - key: PG_META_DB_SSL_MODE
+          value: "require"
+        - key: PG_META_DB_SSL_ROOT_CERT
+          scope: RUN_TIME
+          value: ${supabase-db.CA_CERT}
         # Decryption key for Studio's encrypted connection strings
         # Must match Studio's PG_META_CRYPTO_KEY
         - key: CRYPTO_KEY
           value: "dev-only-encryption-key-change-in-production-32chars"
 
   jobs:
-    # Database Initialization (runs after deployment)
+    # Database Initialization (runs before services start)
     - name: db-init
       git:
         repo_clone_url: https://github.com/digitalocean/supabase-appplatform.git
         branch: main
-      kind: POST_DEPLOY
+      kind: PRE_DEPLOY
       dockerfile_path: db-init/Dockerfile.dbinit
       instance_count: 1
       instance_size_slug: apps-s-1vcpu-0.5gb
