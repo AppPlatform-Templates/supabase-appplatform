@@ -1,6 +1,6 @@
 -- Supabase Database Initialization Script
 -- This script is idempotent and safe to run multiple times
--- It will create schemas, extensions, roles, and permissions needed for Supabase
+-- It creates schemas, extensions, roles, and permissions needed for Supabase
 
 -- Exit early if already initialized
 DO $$
@@ -23,33 +23,31 @@ CREATE SCHEMA IF NOT EXISTS auth;
 CREATE SCHEMA IF NOT EXISTS storage;
 CREATE SCHEMA IF NOT EXISTS extensions;
 
--- Install extensions (must be superuser or have appropriate privileges)
+-- Install required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS pgjwt WITH SCHEMA extensions;
 
--- Optional extensions (may not be available on all PostgreSQL installations)
+-- Install optional extensions (if available)
 DO $$
 BEGIN
-    -- Try to create pg_net extension
     CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
     RAISE NOTICE 'pg_net extension created successfully';
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE NOTICE 'pg_net extension not available: %', SQLERRM;
+        RAISE NOTICE 'pg_net extension not available (optional): %', SQLERRM;
 END $$;
 
 DO $$
 BEGIN
-    -- Try to create pgvector extension
     CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
     RAISE NOTICE 'vector extension created successfully';
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE NOTICE 'vector extension not available: %', SQLERRM;
+        RAISE NOTICE 'vector extension not available (optional): %', SQLERRM;
 END $$;
 
--- Create Supabase roles (skip if they already exist)
+-- Create Supabase API roles (for RLS and API access)
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
@@ -78,9 +76,8 @@ BEGIN
     END IF;
 END $$;
 
--- Create supabase_admin user with same password as doadmin (for Studio/Meta)
--- Note: On DO managed DB, we can't make it SUPERUSER, but we grant it all other privileges
--- Studio hardcodes 'supabase_admin' as the username in encrypted connection strings
+-- Create supabase_admin user for Studio
+-- Studio encrypts connection strings with this username hardcoded
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
@@ -90,50 +87,40 @@ BEGIN
 END $$;
 
 -- Set supabase_admin password to match doadmin password
+-- This allows Studio to connect using the same credentials
 \set password_sql 'ALTER ROLE supabase_admin WITH PASSWORD ' :'admin_password'
 :password_sql;
 
--- Grant extensive privileges to supabase_admin
+-- Grant database-level privileges to supabase_admin
 GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
 
--- Test if doadmin (current user) can SET ROLE postgres
--- This will help us understand the limitations of the managed database
-DO $$
-BEGIN
-    -- Try to SET ROLE postgres
-    EXECUTE 'SET ROLE postgres';
-    RAISE NOTICE '✓ SUCCESS: doadmin can SET ROLE postgres';
-    -- Reset back to doadmin
-    EXECUTE 'RESET ROLE';
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE '✗ CANNOT SET ROLE postgres: %', SQLERRM;
-        RAISE NOTICE 'This is expected on managed databases - proceeding with doadmin privileges';
-END $$;
+-- CRITICAL: Grant schema-level permissions to supabase_admin
+-- This allows Studio to create tables, schemas, and other objects
+GRANT ALL ON SCHEMA public TO supabase_admin;
+GRANT ALL ON SCHEMA auth TO supabase_admin;
+GRANT ALL ON SCHEMA storage TO supabase_admin;
+GRANT USAGE ON SCHEMA extensions TO supabase_admin;
 
--- Grant permissions on public schema
+-- Grant permissions on public schema for API access
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
 
--- Auth schema permissions
-GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
-GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA auth TO supabase_auth_admin;
+-- Grant permissions on auth schema
+GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin, supabase_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin, supabase_admin;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA auth TO supabase_auth_admin, supabase_admin;
 
--- Storage schema permissions
-GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
-GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA storage TO supabase_storage_admin;
+-- Grant permissions on storage schema
+GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin, supabase_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin, supabase_admin;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA storage TO supabase_storage_admin, supabase_admin;
 
--- Extensions schema permissions
-GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO anon, authenticated, service_role;
+-- Grant permissions on extensions schema
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO anon, authenticated, service_role, supabase_admin;
 
--- Enable Row Level Security by default for new tables in public schema
+-- Set default privileges for future objects in public schema
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
@@ -142,7 +129,8 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authen
 DO $$
 BEGIN
     RAISE NOTICE '✓ Supabase database initialization complete!';
-    RAISE NOTICE '  - Schemas: auth, storage, extensions';
+    RAISE NOTICE '  - Schemas: auth, storage, extensions, public';
     RAISE NOTICE '  - Extensions: uuid-ossp, pgcrypto, pgjwt';
-    RAISE NOTICE '  - Roles: anon, authenticated, service_role, supabase_auth_admin, supabase_storage_admin';
+    RAISE NOTICE '  - Roles: anon, authenticated, service_role, supabase_auth_admin, supabase_storage_admin, supabase_admin';
+    RAISE NOTICE '  - supabase_admin can create tables, schemas, and manage database objects';
 END $$;

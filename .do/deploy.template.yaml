@@ -33,6 +33,7 @@ spec:
       envs:
         - key: STUDIO_PG_META_URL
           value: http://meta:8080
+        # Database connection details (for Studio dashboard display)
         - key: POSTGRES_HOST
           scope: RUN_TIME
           value: ${supabase-db.HOSTNAME}
@@ -48,6 +49,9 @@ spec:
         - key: POSTGRES_PASSWORD
           scope: RUN_TIME
           value: ${supabase-db.PASSWORD}
+        # Encryption key for Studio-Meta communication
+        # Studio encrypts connection strings (with username: supabase_admin)
+        # Meta decrypts using CRYPTO_KEY
         - key: PG_META_CRYPTO_KEY
           value: "dev-only-encryption-key-change-in-production-32chars"
         - key: DEFAULT_ORGANIZATION_NAME
@@ -131,13 +135,15 @@ spec:
       envs:
         - key: PG_META_PORT
           value: "8080"
-        # Use direct database connection as doadmin
-        # Since Studio is configured with POSTGRES_USER: doadmin, the encrypted
-        # connection strings should also use doadmin credentials
+        # Direct database connection as fallback
+        # Note: Studio sends encrypted connection strings per-request with supabase_admin username
+        # Those override this connection for Studio-initiated operations
         - key: PG_META_DB_URL
           scope: RUN_TIME
           type: SECRET
           value: ${supabase-db.DATABASE_URL}
+        # Decryption key for Studio's encrypted connection strings
+        # Must match Studio's PG_META_CRYPTO_KEY
         - key: CRYPTO_KEY
           value: "dev-only-encryption-key-change-in-production-32chars"
 
