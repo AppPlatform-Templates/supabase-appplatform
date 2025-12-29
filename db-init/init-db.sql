@@ -78,9 +78,24 @@ BEGIN
     END IF;
 END $$;
 
--- Note: We use doadmin for Meta/Studio connections instead of creating a separate
--- supabase_admin user because DigitalOcean managed databases don't allow creating
--- arbitrary SUPERUSER roles (only doadmin is permitted)
+-- Create supabase_admin user with same password as doadmin (for Studio/Meta)
+-- Note: On DO managed DB, we can't make it SUPERUSER, but we grant it all other privileges
+-- Studio hardcodes 'supabase_admin' as the username in encrypted connection strings
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+        CREATE ROLE supabase_admin LOGIN CREATEROLE CREATEDB;
+        RAISE NOTICE 'Created role: supabase_admin';
+    END IF;
+END $$;
+
+-- Set supabase_admin password to match doadmin password
+\set password_sql 'ALTER ROLE supabase_admin WITH PASSWORD ' :'admin_password'
+:password_sql;
+
+-- Grant extensive privileges to supabase_admin (everything except SUPERUSER)
+GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
+GRANT postgres TO supabase_admin;  -- Grant postgres role to supabase_admin
 
 -- Grant permissions on public schema
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
