@@ -100,6 +100,9 @@ GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
 -- This allows supabase_admin to have similar capabilities to doadmin
 GRANT doadmin TO supabase_admin;
 
+-- Grant postgres role to allow SET ROLE postgres (needed for schema creation)
+GRANT postgres TO supabase_admin WITH ADMIN OPTION;
+
 -- Grant permissions on public schema
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
