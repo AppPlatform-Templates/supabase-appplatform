@@ -30,7 +30,7 @@ DB_PASSWORD=$(echo "$DATABASE_URL" | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p')
 
 # Run the initialization script with the password as a variable
 echo "Extracted database password for supabase_admin user"
-psql "$DATABASE_URL" -v admin_password="'$DB_PASSWORD'" -f /app/init-db.sql
+psql "$DATABASE_URL" -v admin_password="$DB_PASSWORD" -f /app/init-db.sql
 
 exit_code=$?
 

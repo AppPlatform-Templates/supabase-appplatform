@@ -80,11 +80,11 @@ BEGIN
     -- Ensure supabase_admin exists as a LOGIN user (not just a role)
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
         -- User/role exists, update it to have LOGIN privileges and password
-        EXECUTE format('ALTER ROLE supabase_admin WITH LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION PASSWORD %L', :'admin_password');
+        EXECUTE format('ALTER ROLE supabase_admin WITH LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION PASSWORD %L', :admin_password);
         RAISE NOTICE 'Updated existing supabase_admin with LOGIN privileges and password';
     ELSE
         -- Create new supabase_admin user with LOGIN privileges and password
-        EXECUTE format('CREATE ROLE supabase_admin LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION PASSWORD %L', :'admin_password');
+        EXECUTE format('CREATE ROLE supabase_admin LOGIN SUPERUSER CREATEROLE CREATEDB REPLICATION PASSWORD %L', :admin_password);
         RAISE NOTICE 'Created new login user: supabase_admin with password';
     END IF;
 END $$;
