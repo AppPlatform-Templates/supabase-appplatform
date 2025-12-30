@@ -49,17 +49,13 @@ cat << EOF
 Supabase JWT Key Generator
 ================================================
 
-SUPABASE_JWT_SECRET:
-$JWT_SECRET
+SUPABASE_JWT_SECRET: $JWT_SECRET
 
-SUPABASE_ANON_KEY:
-$ANON_KEY
+SUPABASE_ANON_KEY: $ANON_KEY
 
-SUPABASE_SERVICE_ROLE_KEY:
-$SERVICE_ROLE_KEY
+SUPABASE_SERVICE_ROLE_KEY: $SERVICE_ROLE_KEY
 
-CRYPTO_KEY:
-$CRYPTO_KEY
+CRYPTO_KEY: $CRYPTO_KEY
 
 ================================================
 EOF
