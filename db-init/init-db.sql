@@ -1,21 +1,13 @@
 -- Supabase Database Initialization Script
 -- This script is idempotent and safe to run multiple times
--- It creates schemas, extensions, roles, and permissions needed for Supabase
+-- Each section checks if its work is already done before executing
 
--- Exit early if already initialized
+-- Initialization start
 DO $$
 BEGIN
-    -- Check if we've already initialized by looking for the auth schema
-    IF EXISTS (
-        SELECT 1 FROM information_schema.schemata WHERE schema_name = 'auth'
-    ) AND EXISTS (
-        SELECT 1 FROM pg_roles WHERE rolname = 'anon'
-    ) THEN
-        RAISE NOTICE 'Supabase database already initialized. Skipping initialization.';
-        RETURN;
-    END IF;
-
-    RAISE NOTICE 'Initializing Supabase database...';
+    RAISE NOTICE '======================================';
+    RAISE NOTICE 'Starting Supabase database initialization...';
+    RAISE NOTICE '======================================';
 END $$;
 
 -- Create schemas
@@ -125,12 +117,41 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authentic
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
 
+-- CRITICAL: Grant postgres role membership to supabase_admin
+-- This allows supabase_admin to execute "SET ROLE postgres" when creating schemas
+-- Studio/Meta requires this capability for schema management operations
+DO $$
+BEGIN
+    -- Check if supabase_admin already has postgres role
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_auth_members
+        WHERE roleid = (SELECT oid FROM pg_roles WHERE rolname = 'postgres')
+        AND member = (SELECT oid FROM pg_roles WHERE rolname = 'supabase_admin')
+    ) THEN
+        -- Try to grant postgres role to supabase_admin
+        BEGIN
+            GRANT postgres TO supabase_admin;
+            RAISE NOTICE '✓ Granted postgres role to supabase_admin (enables SET ROLE postgres)';
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE WARNING 'Failed to grant postgres role to supabase_admin: insufficient privileges';
+                RAISE NOTICE 'Schema creation in Studio UI may fail with "must be able to SET ROLE postgres" error';
+            WHEN OTHERS THEN
+                RAISE WARNING 'Failed to grant postgres role to supabase_admin: %', SQLERRM;
+        END;
+    ELSE
+        RAISE NOTICE '✓ supabase_admin already has postgres role membership';
+    END IF;
+END $$;
+
 -- Confirm initialization
 DO $$
 BEGIN
+    RAISE NOTICE '======================================';
     RAISE NOTICE '✓ Supabase database initialization complete!';
     RAISE NOTICE '  - Schemas: auth, storage, extensions, public';
     RAISE NOTICE '  - Extensions: uuid-ossp, pgcrypto, pgjwt';
     RAISE NOTICE '  - Roles: anon, authenticated, service_role, supabase_auth_admin, supabase_storage_admin, supabase_admin';
     RAISE NOTICE '  - supabase_admin can create tables, schemas, and manage database objects';
+    RAISE NOTICE '======================================';
 END $$;
