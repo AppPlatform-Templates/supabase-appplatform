@@ -76,7 +76,7 @@ chmod +x scripts/generate-keys.sh
 **Save the output** - you'll need these 4 keys in the next step:
 - `SUPABASE_JWT_SECRET`
 - `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SERVICE_KEY`
 - `CRYPTO_KEY`
 
 ### Step 3: Update App Spec with Keys
@@ -87,7 +87,7 @@ Open `.do/app.yaml` and replace the `<REQUIRED>` values with your generated keys
 |----------------|-----------|---------------------|
 | `PG_META_CRYPTO_KEY` | studio | `CRYPTO_KEY` |
 | `SUPABASE_ANON_KEY` | studio | `SUPABASE_ANON_KEY` |
-| `SUPABASE_SERVICE_KEY` | studio | `SUPABASE_SERVICE_ROLE_KEY` |
+| `SUPABASE_SERVICE_KEY` | studio | `SUPABASE_SERVICE_KEY` |
 | `PGRST_JWT_SECRET` | rest | `SUPABASE_JWT_SECRET` |
 | `CRYPTO_KEY` | meta | `CRYPTO_KEY` |
 

@@ -108,7 +108,7 @@ services:
       - key: SUPABASE_SERVICE_KEY
         scope: RUN_TIME
         type: SECRET
-        value: ${SUPABASE_SERVICE_ROLE_KEY}
+        value: ${SUPABASE_SERVICE_KEY}
       - key: NEXT_PUBLIC_ENABLE_LOGS
         value: "true"
 
@@ -282,7 +282,7 @@ services:
       - key: SERVICE_KEY
         scope: RUN_TIME
         type: SECRET
-        value: ${SUPABASE_SERVICE_ROLE_KEY}
+        value: ${SUPABASE_SERVICE_KEY}
       - key: POSTGREST_URL
         value: http://rest:3000
       - key: PGRST_JWT_SECRET

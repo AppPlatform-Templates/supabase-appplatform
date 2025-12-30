@@ -71,7 +71,7 @@ spec:
         - key: SUPABASE_SERVICE_KEY
           scope: RUN_TIME
           type: SECRET
-          value: ${SUPABASE_SERVICE_ROLE_KEY}
+          value: ${SUPABASE_SERVICE_KEY}
         - key: NEXT_PUBLIC_ENABLE_LOGS
           value: "false"
 

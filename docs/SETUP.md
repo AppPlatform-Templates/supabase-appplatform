@@ -58,7 +58,7 @@ You need to add the JWT keys from Step 2. Choose one method:
 
 **Option A: DigitalOcean UI**
 1. Deploy first (Step 5), then go to App Settings > Environment Variables
-2. Add: `SUPABASE_JWT_SECRET`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+2. Add: `SUPABASE_JWT_SECRET`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`
 
 **Option B: Update app.yaml**
 Replace the placeholder values in `.do/app.yaml` with your actual keys before deploying.
