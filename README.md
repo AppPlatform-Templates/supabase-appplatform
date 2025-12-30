@@ -219,6 +219,16 @@ This simplified template focuses on core database and API functionality. The fol
 
 See [docs/VERSION.md](./docs/VERSION.md) for current component versions.
 
+## Known Limitations
+
+When using DigitalOcean Managed PostgreSQL, the following limitations apply:
+
+- **Schema Creation via Studio UI**: Creating new schemas through the Studio UI is not supported. Use the SQL Editor instead:
+  ```sql
+  CREATE SCHEMA my_schema;
+  ```
+  This is due to DigitalOcean's security model where the `doadmin` user does not have full SUPERUSER privileges. All other database operations work normally.
+
 ## Resources
 
 ### Supabase Documentation
