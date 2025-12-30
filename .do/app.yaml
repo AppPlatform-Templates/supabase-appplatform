@@ -53,7 +53,9 @@ services:
       # Studio encrypts connection strings (with username: supabase_admin)
       # Meta decrypts using CRYPTO_KEY
       - key: PG_META_CRYPTO_KEY
-        value: "3A1xMFPbzKJsv/QWxsBMi9B3GYwN/xZsKLTbTT0GvkQ="
+        scope: RUN_TIME
+        type: SECRET
+        value: ${CRYPTO_KEY}
       - key: DEFAULT_ORGANIZATION_NAME
         value: "My Organization"
       - key: DEFAULT_PROJECT_NAME
@@ -161,7 +163,9 @@ services:
       # Decryption key for Studio's encrypted connection strings
       # Must match Studio's PG_META_CRYPTO_KEY
       - key: CRYPTO_KEY
-        value: "3A1xMFPbzKJsv/QWxsBMi9B3GYwN/xZsKLTbTT0GvkQ="
+        scope: RUN_TIME
+        type: SECRET
+        value: ${CRYPTO_KEY}
 
 jobs:
   # Database Initialization (runs before services start)
