@@ -62,35 +62,48 @@ END $$;
 \set password_sql 'ALTER ROLE supabase_admin WITH PASSWORD ' :'admin_password'
 :password_sql;
 
--- Grant database privileges
+-- Grant database privileges to supabase_admin
 GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
 
--- Grant schema permissions
+-- Grant schema permissions to supabase_admin
 GRANT ALL ON SCHEMA public TO supabase_admin;
 GRANT ALL ON SCHEMA auth TO supabase_admin;
 GRANT ALL ON SCHEMA storage TO supabase_admin;
 GRANT USAGE ON SCHEMA extensions TO supabase_admin;
 
--- Grant permissions to API roles on public schema
+-- Grant permissions to API roles (anon, authenticated, service_role) on public schema
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
 
--- Grant permissions on auth schema
-GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin, supabase_admin;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin, supabase_admin;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA auth TO supabase_auth_admin, supabase_admin;
+-- Grant permissions on auth schema to supabase_auth_admin
+GRANT USAGE ON SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON ALL ROUTINES IN SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin;
 
--- Grant permissions on storage schema
-GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin, supabase_admin;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin, supabase_admin;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA storage TO supabase_storage_admin, supabase_admin;
+-- Grant permissions on storage schema to supabase_storage_admin
+GRANT USAGE ON SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON ALL ROUTINES IN SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
 
 -- Grant permissions on extensions schema
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO anon, authenticated, service_role, supabase_admin;
+GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO anon, authenticated, service_role;
 
--- Set default privileges for future objects
+-- Set default privileges for future objects in public schema
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
+
+-- Set default privileges for future objects in auth schema
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin;
+
+-- Set default privileges for future objects in storage schema
+ALTER DEFAULT PRIVILEGES IN SCHEMA storage GRANT ALL ON TABLES TO supabase_storage_admin;
+ALTER DEFAULT PRIVILEGES IN SCHEMA storage GRANT ALL ON ROUTINES TO supabase_storage_admin;
+ALTER DEFAULT PRIVILEGES IN SCHEMA storage GRANT ALL ON SEQUENCES TO supabase_storage_admin;
