@@ -60,6 +60,10 @@ doctl databases create supabase-db \
   --version 17 \
   --size db-s-1vcpu-2gb \
   --region nyc3
+
+# Wait for database to be ready (provisioning takes 5-10 minutes)
+# Check status with: doctl databases list --format Name,Status
+# Proceed to next steps only when status shows "online"
 ```
 
 ### Step 2: Clone and Generate Keys
