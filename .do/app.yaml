@@ -134,13 +134,24 @@ services:
     envs:
       - key: PG_META_PORT
         value: "8080"
-      # Direct database connection as fallback
+      # Direct database connection using supabase_admin (aligns with official Supabase setup)
       # Note: Studio sends encrypted connection strings per-request with supabase_admin username
-      # Those override this connection for Studio-initiated operations
-      - key: PG_META_DB_URL
+      # This base connection should use the same user for consistency
+      - key: PG_META_DB_HOST
+        scope: RUN_TIME
+        value: ${supabase-db.HOSTNAME}
+      - key: PG_META_DB_PORT
+        scope: RUN_TIME
+        value: ${supabase-db.PORT}
+      - key: PG_META_DB_NAME
+        scope: RUN_TIME
+        value: ${supabase-db.DATABASE}
+      - key: PG_META_DB_USER
+        value: supabase_admin
+      - key: PG_META_DB_PASSWORD
         scope: RUN_TIME
         type: SECRET
-        value: ${supabase-db.DATABASE_URL}
+        value: ${supabase-db.PASSWORD}
       # SSL configuration for managed database connections
       - key: PG_META_DB_SSL_MODE
         value: "require"
