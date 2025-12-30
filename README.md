@@ -48,23 +48,50 @@ Before deploying, you need:
 
 ## Quick Start
 
-Follow these steps to deploy Supabase:
+**Prerequisites** (⚠️ MUST DO):
+- Generate Supabase encryption keys: `./scripts/generate-keys.sh`
+- Replace required values in `.do/app.yaml` (see Step 2 below)
+- Create managed PostgreSQL database (see Step 3 below)
 
-### Step 1: Clone the Repository
+### Step 1: Clone and Generate Keys
 
 ```bash
 git clone https://github.com/digitalocean/supabase-appplatform.git
 cd supabase-appplatform
-```
 
-### Step 2: Generate JWT Keys
-
-```bash
+# Generate all required keys
 chmod +x scripts/generate-keys.sh
 ./scripts/generate-keys.sh
 ```
 
-Save the generated keys - you'll need them for deployment.
+**Save the output** - you'll need these 4 keys in the next step:
+- `SUPABASE_JWT_SECRET`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `CRYPTO_KEY`
+
+### Step 2: Update App Spec with Keys
+
+Open `.do/app.yaml` and replace the `<REQUIRED>` values with your generated keys:
+
+| Key to Replace | Component | Line # | Generated Key to Use |
+|----------------|-----------|---------|---------------------|
+| `PG_META_CRYPTO_KEY` | studio | ~56 | `CRYPTO_KEY` |
+| `SUPABASE_ANON_KEY` | studio | ~70 | `SUPABASE_ANON_KEY` |
+| `SUPABASE_SERVICE_KEY` | studio | ~74 | `SUPABASE_SERVICE_ROLE_KEY` |
+| `PGRST_JWT_SECRET` | rest | ~121 | `SUPABASE_JWT_SECRET` |
+| `CRYPTO_KEY` | meta | ~165 | `CRYPTO_KEY` |
+
+**Example:**
+```yaml
+# BEFORE:
+- key: PGRST_JWT_SECRET
+  value: <REQUIRED>
+
+# AFTER (use your actual generated key):
+- key: PGRST_JWT_SECRET
+  value: JMYwheHInFvsqptZOnKHI5upvmphHlTN9QarvHswMvI=
+```
 
 ### Step 3: Create Managed Database
 
@@ -78,14 +105,7 @@ doctl databases create supabase-db \
 
 Wait for the database to be online (5-10 minutes).
 
-### Step 4: Configure Environment Variables
-
-Set the JWT keys as App Platform environment variables (see [SETUP.md](./docs/SETUP.md) for details):
-- `SUPABASE_JWT_SECRET`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-
-### Step 5: Deploy
+### Step 4: Deploy
 
 ```bash
 doctl apps create --spec .do/app.yaml
