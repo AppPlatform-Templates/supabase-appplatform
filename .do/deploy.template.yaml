@@ -14,16 +14,17 @@ spec:
             prefix: /
         component:
           name: studio
-  
+
   services:
     - name: studio
       image:
         registry_type: DOCKER_HUB
         registry: supabase
         repository: studio
+        tag: 2025.12.17-sha-43f4f7f
       http_port: 3000
       instance_count: 1
-      instance_size_slug: apps-s-1vcpu-0.5gb
+      instance_size_slug: apps-s-1vcpu-1gb
       health_check:
         http_path: /api/platform/profile
         initial_delay_seconds: 30
@@ -45,15 +46,18 @@ spec:
           value: ${supabase-db.DATABASE}
         - key: POSTGRES_USER
           scope: RUN_TIME
-          value: doadmin
+          value: ${supabase-db.USERNAME}
         - key: POSTGRES_PASSWORD
           scope: RUN_TIME
+          type: SECRET
           value: ${supabase-db.PASSWORD}
         # Encryption key for Studio-Meta communication
-        # Studio encrypts connection strings (with username: supabase_admin)
+        # Studio encrypts connection strings using PG_META_CRYPTO_KEY (with username: supabase_admin)
         # Meta decrypts using CRYPTO_KEY
         - key: PG_META_CRYPTO_KEY
-          value: "dev-only-encryption-key-change-in-production-32chars"
+          scope: RUN_TIME
+          type: SECRET
+          value: <REQUIRED>
         - key: DEFAULT_ORGANIZATION_NAME
           value: "My Organization"
         - key: DEFAULT_PROJECT_NAME
@@ -67,11 +71,11 @@ spec:
         - key: SUPABASE_ANON_KEY
           scope: RUN_TIME
           type: SECRET
-          value: ${SUPABASE_ANON_KEY}
+          value: <REQUIRED>
         - key: SUPABASE_SERVICE_KEY
           scope: RUN_TIME
           type: SECRET
-          value: ${SUPABASE_SERVICE_KEY}
+          value: <REQUIRED>
         - key: NEXT_PUBLIC_ENABLE_LOGS
           value: "false"
 
@@ -83,7 +87,8 @@ spec:
         - key: APPPLAT_TEMPLATE_COMMIT_SHA
           value: ${_self.COMMIT_HASH}
 
-    # PostgREST - REST API server for Database (HTTP accessible)
+    # PostgREST - Auto-generated REST API
+    # Version pinned to v12.2.3 for API stability
     - name: rest
       image:
         registry_type: DOCKER_HUB
@@ -92,7 +97,7 @@ spec:
         tag: v12.2.3
       http_port: 3000
       instance_count: 1
-      instance_size_slug: apps-s-1vcpu-0.5gb
+      instance_size_slug: apps-s-1vcpu-1gb
       health_check:
         http_path: /
         initial_delay_seconds: 10
@@ -117,7 +122,7 @@ spec:
         - key: PGRST_JWT_SECRET
           scope: RUN_TIME
           type: SECRET
-          value: ${SUPABASE_JWT_SECRET}
+          value: <REQUIRED>
         - key: PGRST_JWT_AUD
           value: authenticated
 
@@ -127,17 +132,14 @@ spec:
         registry_type: DOCKER_HUB
         registry: supabase
         repository: postgres-meta
-        tag: v0.84.2
+        tag: v0.95.1
       internal_ports:
         - 8080
       instance_count: 1
-      instance_size_slug: apps-s-1vcpu-0.5gb
+      instance_size_slug: apps-s-1vcpu-1gb
       envs:
         - key: PG_META_PORT
           value: "8080"
-        # Direct database connection using supabase_admin (aligns with official Supabase setup)
-        # Note: Studio sends encrypted connection strings per-request with supabase_admin username
-        # This base connection should use the same user for consistency
         - key: PG_META_DB_HOST
           scope: RUN_TIME
           value: ${supabase-db.HOSTNAME}
@@ -162,13 +164,15 @@ spec:
         # Decryption key for Studio's encrypted connection strings
         # Must match Studio's PG_META_CRYPTO_KEY
         - key: CRYPTO_KEY
-          value: "dev-only-encryption-key-change-in-production-32chars"
+          scope: RUN_TIME
+          type: SECRET
+          value: <REQUIRED>
 
   jobs:
     # Database Initialization (runs before services start)
     - name: db-init
       git:
-        repo_clone_url: https://github.com/digitalocean/supabase-appplatform.git
+        repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
         branch: main
       kind: PRE_DEPLOY
       dockerfile_path: db-init/Dockerfile.dbinit

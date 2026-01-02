@@ -2,6 +2,8 @@
 
 Deploy your own Supabase instance on DigitalOcean App Platform with a managed PostgreSQL database. This template provides a simplified, production-ready Supabase setup optimized for App Platform.
 
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/AppPlatform-Templates/supabase-appplatform/tree/main)
+
 ## What is Supabase?
 
 [Supabase](https://supabase.com) is an open-source Firebase alternative providing:
