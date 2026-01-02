@@ -2,8 +2,6 @@
 
 Deploy your own Supabase instance on DigitalOcean App Platform with a managed PostgreSQL database. This template provides a simplified, production-ready Supabase setup optimized for App Platform.
 
-> **Important**: This template requires a managed PostgreSQL database to be created before deployment. See [Setup Guide](./docs/SETUP.md) for step-by-step instructions.
-
 ## What is Supabase?
 
 [Supabase](https://supabase.com) is an open-source Firebase alternative providing:
@@ -25,9 +23,9 @@ This simplified deployment includes:
 | **PostgREST** | Auto-generated REST API | Service (HTTP) |
 | **Meta** | Database management API | Service (Internal) |
 | **PostgreSQL** | Database (with extensions) | Managed Database (Production) |
-| **DB Init** | Automatic schema setup | Post-deploy Job |
+| **DB Init** | Automatic schema setup | Pre-deploy Job |
 
-> **Note**: This is a simplified template. For authentication (GoTrue) and file storage, see the [Production Template](./docs/PRODUCTION.md).
+> **Note**: This is a simplified template. For authentication (GoTrue) and file storage, see the [Production Template](./PRODUCTION.md).
 
 ### Routing
 
@@ -114,7 +112,7 @@ doctl apps create --spec .do/app.yaml
 
 The `db-init` job will automatically set up your database with required schemas and roles.
 
-**For detailed step-by-step instructions, see [SETUP.md](./docs/SETUP.md)**
+> **Customization**: If you need to customize the deployment (modify database initialization scripts, adjust component configurations, etc.), fork this repository, make your changes, and update the `github.repo` field in the template yaml to point to your forked repository before deploying.
 
 ## Post-Deployment
 
@@ -142,7 +140,16 @@ Check that the database was properly initialized:
 doctl apps logs $APP_ID --component db-init
 ```
 
-You should see confirmation that schemas, roles, and extensions were created.
+### Monitor Logs
+
+```bash
+# Monitor Studio service logs
+doctl apps logs $APP_ID --component studio --follow
+
+# Check other components
+doctl apps logs $APP_ID --component rest --follow
+doctl apps logs $APP_ID --component meta --follow
+```
 
 ### Test the REST API
 
@@ -153,13 +160,21 @@ curl https://$APP_URL/rest/v1/ \
   -H "Authorization: Bearer $SUPABASE_ANON_KEY"
 ```
 
+## Clean Up
+
+To delete your deployment and database:
+
+```bash
+# Delete app
+doctl apps delete $APP_ID
+
+# Delete database
+doctl databases delete $(doctl databases list --format ID --no-header)
+```
+
 ## Documentation
 
-- **[Setup Guide](./docs/SETUP.md)** - Detailed deployment instructions
-- **[Getting Started Guide](./docs/GETTING-STARTED.md)** - Build your first app with Supabase
-- **[Production Setup](./docs/PRODUCTION.md)** - Add authentication and file storage
-- **[Troubleshooting](./docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[Version Info](./docs/VERSION.md)** - Component versions and updates
+- **[Production Setup](./PRODUCTION.md)** - Add authentication and file storage
 
 ## Pricing
 
@@ -173,7 +188,7 @@ For detailed pricing information based on instance sizes and resources, visit th
 
 Creating new schemas through the Studio UI is currently not supported. Use the SQL Editor instead:
 
-```sql
+```bash
 CREATE SCHEMA my_schema;
 ```
 
