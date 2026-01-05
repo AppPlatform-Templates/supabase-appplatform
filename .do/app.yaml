@@ -1,4 +1,13 @@
+# Supabase App Platform Template
+# Open-source Firebase alternative with PostgreSQL
+# Includes Studio, PostgREST API, and Meta database management
+#
+# Deploy with: doctl apps create --spec .do/app.yaml
+
 name: supabase
+# Optionally you can chose a region where the deployment will be hosted
+# Otherwise, DO will chose the nearest region for you in the wizard
+# region: nyc
 
 ingress:
   rules:
