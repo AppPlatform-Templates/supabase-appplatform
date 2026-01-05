@@ -2,7 +2,7 @@
 # Open-source Firebase alternative with PostgreSQL
 # Includes Studio, PostgREST API, and Meta database management
 #
-# Deploy with: doctl apps create --spec .do/app.yaml
+# Deploy with: doctl apps create --spec .do/starter-app.yaml
 
 name: supabase
 # Optionally you can chose a region where the deployment will be hosted

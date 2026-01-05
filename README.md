@@ -59,7 +59,7 @@ For more control over your deployment configuration:
 
 **Step 1: Create Managed Database**
 ```bash
-# Create PostgreSQL database - name must match .do/app.yaml
+# Create PostgreSQL database - name must match .do/starter-app.yaml
 doctl databases create supabase-db \
   --engine pg \
   --version 17 \
@@ -82,7 +82,7 @@ chmod +x scripts/generate-keys.sh
 
 **Step 3: Update Configuration**
 
-Open `.do/app.yaml` and replace `<REQUIRED>` placeholders with your generated keys:
+Open `.do/starter-app.yaml` and replace `<REQUIRED>` placeholders with your generated keys:
 
 | Component | Key to Replace | Use Generated Key |
 |-----------|----------------|-------------------|
@@ -94,7 +94,7 @@ Open `.do/app.yaml` and replace `<REQUIRED>` placeholders with your generated ke
 
 **Step 4: Deploy**
 ```bash
-doctl apps create --spec .do/app.yaml
+doctl apps create --spec .do/starter-app.yaml
 ```
 
 The deployment includes a pre-deploy job that automatically initializes your database with required schemas, roles, and permissions.
@@ -116,7 +116,7 @@ You can customize the initialization by modifying `db-init/init-db.sql` before d
 To use an existing PostgreSQL database:
 
 1. Skip the database creation step
-2. Update `.do/app.yaml` to reference your existing database
+2. Update `.do/starter-app.yaml` to reference your existing database
 3. Manually run the initialization scripts from `db-init/init-db.sql`
 4. Configure `PGRST_DB_SCHEMAS` to match your schema structure
 
