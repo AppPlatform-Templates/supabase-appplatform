@@ -4,7 +4,7 @@ This guide covers upgrading from the basic development deployment to a productio
 
 ## Production Configuration Overview
 
-The production configuration ([.do/examples/production.yaml](../.do/examples/production.yaml)) includes:
+The production configuration ([.do/production-app.yaml](../.do/production-app.yaml)) includes:
 - Auto-scaling (2-10 instances per service)
 - Managed PostgreSQL (production tier with standby)
 - Professional instance sizes for better performance
@@ -55,7 +55,7 @@ services:
           percent: 70
 ```
 
-See [.do/examples/production.yaml](../.do/examples/production.yaml) for complete configuration.
+See [.do/production-app.yaml](../.do/production-app.yaml) for complete configuration.
 
 ### 3. Configure Custom Domain
 
