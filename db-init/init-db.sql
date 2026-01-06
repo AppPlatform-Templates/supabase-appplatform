@@ -394,3 +394,16 @@ GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_admin;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_admin;
+
+-- Set default search_path for storage admin (critical for Storage service to find tables)
+ALTER ROLE supabase_storage_admin SET search_path = storage, public, extensions;
+
+-- Set search_path for doadmin (Storage service connects as doadmin)
+ALTER ROLE doadmin SET search_path = public, storage, extensions;
+
+-- Set search_path for service_role (sometimes used by Storage)
+ALTER ROLE service_role SET search_path = public, storage, extensions;
+
+-- Set search_path for authenticated and anon roles
+ALTER ROLE authenticated SET search_path = public, storage, extensions;
+ALTER ROLE anon SET search_path = public, extensions;
