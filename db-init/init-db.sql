@@ -104,6 +104,16 @@ ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA auth GRANT ALL ON TABLES TO 
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin;
 
+-- Grant permissions on auth tables to supabase_admin (for Studio/Meta access)
+-- This allows Studio to view users, audit logs, etc.
+GRANT USAGE ON SCHEMA auth TO supabase_admin;
+GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_admin;
+GRANT ALL ON ALL ROUTINES IN SCHEMA auth TO supabase_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA auth GRANT ALL ON TABLES TO supabase_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_admin;
+
 -- Grant permissions on storage schema to supabase_storage_admin
 GRANT USAGE ON SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
@@ -114,6 +124,15 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON TABLES TO supabase_storage_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON SEQUENCES TO supabase_storage_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON ROUTINES TO supabase_storage_admin;
+
+-- Grant storage permissions to supabase_admin (for Studio/Meta access to buckets)
+GRANT USAGE ON SCHEMA storage TO supabase_admin;
+GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_admin;
+GRANT ALL ON ALL ROUTINES IN SCHEMA storage TO supabase_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON TABLES TO supabase_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON SEQUENCES TO supabase_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON ROUTINES TO supabase_admin;
 
 -- Grant permissions on extensions schema
 GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
