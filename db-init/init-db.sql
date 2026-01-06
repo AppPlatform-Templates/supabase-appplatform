@@ -55,7 +55,7 @@ END $$;
 -- Create supabase_admin user (used by Studio/Meta)
 -- Drop and recreate to ensure clean state with correct password
 DROP ROLE IF EXISTS supabase_admin CASCADE;
-CREATE ROLE supabase_admin LOGIN CREATEROLE CREATEDB;
+CREATE ROLE supabase_admin LOGIN CREATEROLE CREATEDB BYPASSRLS;
 
 -- Set password using psql variable (passed from run-db-init.sh)
 \gset
