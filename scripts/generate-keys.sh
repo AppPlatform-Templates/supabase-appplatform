@@ -36,7 +36,7 @@ JWT_SECRET=$(openssl rand -base64 32)
 CRYPTO_KEY=$(openssl rand -base64 32)
 
 # Generate Realtime encryption keys
-DB_ENC_KEY=$(openssl rand -base64 32)
+DB_ENC_KEY=$(openssl rand -base64 12 | head -c 16)  # Must be exactly 16 characters for AES-128
 SECRET_KEY_BASE=$(openssl rand -base64 48)  # Must be at least 64 characters
 
 # Payloads

@@ -57,12 +57,10 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
         CREATE ROLE supabase_admin LOGIN CREATEROLE CREATEDB;
+        -- Set password only on creation
+        EXECUTE format('ALTER ROLE supabase_admin WITH PASSWORD %L', :'admin_password');
     END IF;
 END $$;
-
--- Set supabase_admin password to match doadmin
-\set password_sql 'ALTER ROLE supabase_admin WITH PASSWORD ' :'admin_password'
-:password_sql;
 
 -- Grant database privileges to supabase_admin
 GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
