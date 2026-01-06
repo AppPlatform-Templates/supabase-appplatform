@@ -324,6 +324,11 @@ CREATE INDEX IF NOT EXISTS refresh_tokens_token_idx ON auth.refresh_tokens(token
 CREATE INDEX IF NOT EXISTS refresh_tokens_session_id_idx ON auth.refresh_tokens(session_id);
 CREATE INDEX IF NOT EXISTS audit_log_entries_instance_id_idx ON auth.audit_log_entries(instance_id);
 
+-- Grant permissions on auth tables to supabase_auth_admin (used by GoTrue)
+GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON ALL ROUTINES IN SCHEMA auth TO supabase_auth_admin;
+
 -- ============================================================================
 -- CREATE STORAGE SCHEMA TABLES
 -- ============================================================================
@@ -398,8 +403,12 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_admin;
 -- Set default search_path for storage admin (critical for Storage service to find tables)
 ALTER ROLE supabase_storage_admin SET search_path = storage, public, extensions;
 
--- Set search_path for doadmin (Storage service connects as doadmin)
-ALTER ROLE doadmin SET search_path = public, storage, extensions;
+-- Set search_path for auth admin (critical for GoTrue to find auth tables)
+ALTER ROLE supabase_auth_admin SET search_path = auth, public, extensions;
+
+-- Set search_path for doadmin (Storage and other services connect as doadmin)
+-- CRITICAL: Must include both storage and auth schemas
+ALTER ROLE doadmin SET search_path = public, auth, storage, extensions;
 
 -- Set search_path for service_role (sometimes used by Storage)
 ALTER ROLE service_role SET search_path = public, storage, extensions;
