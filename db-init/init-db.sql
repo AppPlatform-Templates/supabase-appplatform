@@ -1,12 +1,8 @@
 -- Supabase Database Initialization Script
 -- Idempotent - safe to run multiple times
 
--- Clean up auth schema if it exists (to fix any corrupted migration state)
--- Then recreate it so GoTrue migrations can populate it
-DROP SCHEMA IF EXISTS auth CASCADE;
-CREATE SCHEMA auth;
-
--- Create other schemas
+-- Create schemas
+CREATE SCHEMA IF NOT EXISTS auth;
 CREATE SCHEMA IF NOT EXISTS storage;
 CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE SCHEMA IF NOT EXISTS realtime;
@@ -87,6 +83,14 @@ ALTER SCHEMA auth OWNER TO doadmin;
 GRANT ALL ON SCHEMA realtime TO doadmin;
 ALTER SCHEMA realtime OWNER TO doadmin;
 
+-- Grant _realtime schema permissions to doadmin (used by Realtime for internal tables)
+GRANT ALL ON SCHEMA _realtime TO doadmin;
+ALTER SCHEMA _realtime OWNER TO doadmin;
+
+-- Grant storage schema permissions to doadmin (used by Storage API for migrations)
+GRANT ALL ON SCHEMA storage TO doadmin;
+ALTER SCHEMA storage OWNER TO doadmin;
+
 -- Grant permissions to API roles (anon, authenticated, service_role) on public schema
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
@@ -95,9 +99,6 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role
 
 -- Grant permissions on realtime schema (for Realtime migrations and subscriptions)
 GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role;
-
--- Grant permissions on _realtime schema
-GRANT USAGE ON SCHEMA _realtime TO anon, authenticated, service_role;
 
 -- Grant permissions on auth schema to supabase_auth_admin
 GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
@@ -111,6 +112,11 @@ GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON ALL ROUTINES IN SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
 
+-- Set default privileges for future objects in storage schema
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON TABLES TO supabase_storage_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON SEQUENCES TO supabase_storage_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON ROUTINES TO supabase_storage_admin;
+
 -- Grant permissions on extensions schema
 GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO anon, authenticated, service_role;
@@ -119,8 +125,3 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO anon, authenticated, serv
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
-
--- Set default privileges for future objects in storage schema
-ALTER DEFAULT PRIVILEGES IN SCHEMA storage GRANT ALL ON TABLES TO supabase_storage_admin;
-ALTER DEFAULT PRIVILEGES IN SCHEMA storage GRANT ALL ON ROUTINES TO supabase_storage_admin;
-ALTER DEFAULT PRIVILEGES IN SCHEMA storage GRANT ALL ON SEQUENCES TO supabase_storage_admin;
