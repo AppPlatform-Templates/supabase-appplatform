@@ -1,6 +1,10 @@
 -- Supabase Database Initialization Script
 -- Idempotent - safe to run multiple times
 
+-- Set database-level search_path FIRST (critical for connection pooling)
+-- This ensures ALL connections inherit the correct schema search order
+ALTER DATABASE defaultdb SET search_path TO public, storage, auth, extensions;
+
 -- Create schemas
 CREATE SCHEMA IF NOT EXISTS auth;
 CREATE SCHEMA IF NOT EXISTS storage;
