@@ -53,18 +53,13 @@ BEGIN
 END $$;
 
 -- Create supabase_admin user (used by Studio/Meta)
--- Force recreate to ensure it exists with correct password
-DO $$
-BEGIN
-    -- Drop if exists (may have been cascade deleted when auth.users was dropped)
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
-        DROP ROLE supabase_admin;
-    END IF;
-    
-    -- Create fresh
-    CREATE ROLE supabase_admin LOGIN CREATEROLE CREATEDB;
-    EXECUTE format('ALTER ROLE supabase_admin WITH PASSWORD %L', :'admin_password');
-END $$;
+-- Drop and recreate to ensure clean state with correct password
+DROP ROLE IF EXISTS supabase_admin CASCADE;
+CREATE ROLE supabase_admin LOGIN CREATEROLE CREATEDB;
+
+-- Set password using psql variable (passed from run-db-init.sh)
+\gset
+ALTER ROLE supabase_admin WITH PASSWORD :'admin_password';
 
 -- Grant database privileges to supabase_admin
 GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
