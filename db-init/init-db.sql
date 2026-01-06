@@ -2,12 +2,11 @@
 -- Idempotent - safe to run multiple times
 
 -- Clean up auth schema if it exists (to fix any corrupted migration state)
--- GoTrue will recreate it with proper tables during its migration
+-- Then recreate it so GoTrue migrations can populate it
 DROP SCHEMA IF EXISTS auth CASCADE;
+CREATE SCHEMA auth;
 
--- Create schemas
--- Note: auth schema will be created by GoTrue's migrations
--- We only create storage, extensions, and realtime schemas here
+-- Create other schemas
 CREATE SCHEMA IF NOT EXISTS storage;
 CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE SCHEMA IF NOT EXISTS realtime;
@@ -74,12 +73,15 @@ GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
 
 -- Grant schema permissions to supabase_admin
 GRANT ALL ON SCHEMA public TO supabase_admin;
+GRANT ALL ON SCHEMA auth TO supabase_admin;
 GRANT ALL ON SCHEMA storage TO supabase_admin;
 GRANT USAGE ON SCHEMA extensions TO supabase_admin;
 GRANT ALL ON SCHEMA realtime TO supabase_admin;
 GRANT ALL ON SCHEMA _realtime TO supabase_admin;
 
--- Note: auth schema permissions will be set by GoTrue after it creates the schema
+-- Grant auth schema permissions to doadmin (used by GoTrue for migrations)
+GRANT ALL ON SCHEMA auth TO doadmin;
+ALTER SCHEMA auth OWNER TO doadmin;
 
 -- Grant realtime schema permissions to doadmin (used by Realtime for migrations)
 GRANT ALL ON SCHEMA realtime TO doadmin;
@@ -97,7 +99,11 @@ GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role;
 -- Grant permissions on _realtime schema
 GRANT USAGE ON SCHEMA _realtime TO anon, authenticated, service_role;
 
--- Note: auth schema permissions for supabase_auth_admin will be set by GoTrue after it creates the schema
+-- Grant permissions on auth schema to supabase_auth_admin
+GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin;
 
 -- Grant permissions on storage schema to supabase_storage_admin
 GRANT USAGE ON SCHEMA storage TO supabase_storage_admin;
