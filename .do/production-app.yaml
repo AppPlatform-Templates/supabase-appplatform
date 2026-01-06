@@ -190,7 +190,7 @@ services:
       registry_type: DOCKER_HUB
       registry: supabase
       repository: gotrue
-      tag: v2.184.0
+      tag: v2.155.1
     http_port: 9999
     instance_size_slug: apps-d-1vcpu-1gb
     # instance_count: 2  # If autoscaling is disabled, uncomment and set instance_count (required)
