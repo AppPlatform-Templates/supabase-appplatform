@@ -1,25 +1,28 @@
-# Supabase Production Configuration for DigitalOcean App Platform
+# Supabase Production App Platform Template
+# Open-source Firebase alternative with PostgreSQL
+# Production configuration with auto-scaling, Auth, Storage, and Realtime
 #
 # This configuration is optimized for production workloads with:
-# - Auto-scaling (2-10 instances per service)
-# - Managed PostgreSQL (production tier with standby)
+# - Auto-scaling (1-3 instances per service)
+# - GoTrue authentication service
+# - Storage API with DigitalOcean Spaces
+# - Realtime subscriptions via WebSockets
+# - Managed PostgreSQL (production tier)
 # - Professional instance sizes for better performance
-# - Health checks and monitoring
 #
 # Prerequisites:
-# 1. Create managed PostgreSQL database (see instructions below)
-# 2. Create Spaces bucket for storage
-# 3. Generate all JWT keys
-# 4. Configure SMTP (optional)
+# 1. Create managed PostgreSQL database
+# 2. Create DigitalOcean Spaces bucket for storage
+# 3. Generate all JWT keys using ./scripts/generate-keys.sh
+# 4. Generate Realtime encryption keys (DB_ENC_KEY, SECRET_KEY_BASE)
 #
-# To use this configuration:
-# 1. Copy this file to .do/app.yaml
-# 2. Replace all placeholder values
-# 3. Deploy: doctl apps create --spec .do/app.yaml
+# Deploy with: doctl apps create --spec .do/production-app.yaml
 
 name: supabase-production
+# Optionally you can chose a region where the deployment will be hosted
+# Otherwise, DO will chose the nearest region for you in the wizard
+# region: nyc
 
-# Production ingress routing
 ingress:
   rules:
     - match:
@@ -42,25 +45,32 @@ ingress:
         rewrite: /
     - match:
         path:
+          prefix: /realtime/v1
+      component:
+        name: realtime
+        rewrite: /
+    - match:
+        path:
           prefix: /
       component:
         name: studio
 
 services:
-  # Studio - Admin Dashboard (Production)
+  # Studio - Admin Dashboard
   - name: studio
     image:
       registry_type: DOCKER_HUB
       registry: supabase
       repository: studio
-      tag: "20241022-ce94d1b"
+      tag: 2025.12.17-sha-43f4f7f
     http_port: 3000
     instance_size_slug: apps-d-1vcpu-1gb
+    # instance_count: 2  # If autoscaling is disabled, uncomment and set instance_count (required)
 
     # Auto-scaling configuration
     autoscaling:
-      min_instance_count: 2
-      max_instance_count: 5
+      min_instance_count: 1
+      max_instance_count: 3
       metrics:
         cpu:
           percent: 70
@@ -78,21 +88,29 @@ services:
         value: http://meta:8080
       - key: POSTGRES_HOST
         scope: RUN_TIME
-        value: ${MANAGED_DB_HOSTNAME}
+        value: ${supabase-db.HOSTNAME}
       - key: POSTGRES_PORT
         scope: RUN_TIME
-        value: ${MANAGED_DB_PORT}
+        value: ${supabase-db.PORT}
       - key: POSTGRES_DB
         scope: RUN_TIME
-        value: ${MANAGED_DB_DATABASE}
+        value: ${supabase-db.DATABASE}
+      - key: POSTGRES_USER
+        scope: RUN_TIME
+        value: ${supabase-db.USERNAME}
       - key: POSTGRES_PASSWORD
         scope: RUN_TIME
         type: SECRET
-        value: ${MANAGED_DB_PASSWORD}
+        value: ${supabase-db.PASSWORD}
+      # Encryption key for Studio-Meta communication
+      # Studio encrypts connection strings using PG_META_CRYPTO_KEY (with username: supabase_admin)
+      # Meta decrypts using CRYPTO_KEY
       - key: PG_META_CRYPTO_KEY
-        value: "dev-only-encryption-key-change-in-production-32chars"
+        scope: RUN_TIME
+        type: SECRET
+        value: <REQUIRED>
       - key: DEFAULT_ORGANIZATION_NAME
-        value: "Production"
+        value: "My Supabase Organization"
       - key: DEFAULT_PROJECT_NAME
         value: "Main Project"
       - key: SUPABASE_URL
@@ -120,7 +138,7 @@ services:
       - key: APPPLAT_TEMPLATE_COMMIT_SHA
         value: ${_self.COMMIT_HASH}
 
-  # PostgREST - REST API (Production with auto-scaling)
+  # PostgREST - REST API for PostgreSQL
   - name: rest
     image:
       registry_type: DOCKER_HUB
@@ -129,10 +147,11 @@ services:
       tag: v12.2.3
     http_port: 3000
     instance_size_slug: apps-d-1vcpu-1gb
+    # instance_count: 2  # If autoscaling is disabled, uncomment and set instance_count (required)
 
     autoscaling:
-      min_instance_count: 2
-      max_instance_count: 10
+      min_instance_count: 1
+      max_instance_count: 3
       metrics:
         cpu:
           percent: 70
@@ -148,38 +167,37 @@ services:
     envs:
       - key: PGRST_DB_URI
         scope: RUN_TIME
-        type: SECRET
-        value: ${MANAGED_DB_CONNECTION_STRING}
+        value: ${supabase-db.DATABASE_URL}
       - key: PGRST_DB_SCHEMAS
-        value: public,storage
+        value: public
       - key: PGRST_DB_ANON_ROLE
         value: anon
       - key: PGRST_DB_POOL
         value: "10"
-      - key: PGRST_DB_POOL_TIMEOUT
-        value: "10"
       - key: PGRST_SERVER_PORT
         value: "3000"
+      # JWT Configuration (required for authentication)
       - key: PGRST_JWT_SECRET
         scope: RUN_TIME
         type: SECRET
-        value: ${SUPABASE_JWT_SECRET}
+        value: <REQUIRED>
       - key: PGRST_JWT_AUD
         value: authenticated
 
-  # GoTrue - Authentication Service (Production)
+  # GoTrue - Authentication Service
   - name: auth
     image:
       registry_type: DOCKER_HUB
       registry: supabase
       repository: gotrue
-      tag: v2.174.0
+      tag: v2.184.0
     http_port: 9999
     instance_size_slug: apps-d-1vcpu-1gb
+    # instance_count: 2  # If autoscaling is disabled, uncomment and set instance_count (required)
 
     autoscaling:
-      min_instance_count: 2
-      max_instance_count: 8
+      min_instance_count: 1
+      max_instance_count: 3
       metrics:
         cpu:
           percent: 70
@@ -202,7 +220,7 @@ services:
       - key: GOTRUE_DB_DATABASE_URL
         scope: RUN_TIME
         type: SECRET
-        value: ${MANAGED_DB_CONNECTION_STRING}
+        value: ${supabase-db.DATABASE_URL}
       - key: GOTRUE_SITE_URL
         scope: RUN_TIME
         value: ${APP_URL}
@@ -212,7 +230,7 @@ services:
       - key: GOTRUE_JWT_SECRET
         scope: RUN_TIME
         type: SECRET
-        value: ${SUPABASE_JWT_SECRET}
+        value: <REQUIRED>
       - key: GOTRUE_JWT_EXP
         value: "3600"
       - key: GOTRUE_JWT_AUD
@@ -222,44 +240,32 @@ services:
       - key: API_EXTERNAL_URL
         scope: RUN_TIME
         value: ${APP_URL}
-      # SMTP Configuration
-      - key: GOTRUE_SMTP_HOST
-        scope: RUN_TIME
-        value: ${SMTP_HOST}
-      - key: GOTRUE_SMTP_PORT
-        scope: RUN_TIME
-        value: ${SMTP_PORT}
-      - key: GOTRUE_SMTP_USER
-        scope: RUN_TIME
-        value: ${SMTP_USER}
-      - key: GOTRUE_SMTP_PASS
-        scope: RUN_TIME
-        type: SECRET
-        value: ${SMTP_PASS}
-      - key: GOTRUE_SMTP_ADMIN_EMAIL
-        scope: RUN_TIME
-        value: ${SMTP_ADMIN_EMAIL}
+      # Email configuration
+      # Auto-confirm allows signups without email verification
+      # To enable email verification/password reset emails, add SMTP configuration
+      # (GOTRUE_SMTP_HOST, GOTRUE_SMTP_PORT, GOTRUE_SMTP_USER, GOTRUE_SMTP_PASS, GOTRUE_SMTP_ADMIN_EMAIL)
       - key: GOTRUE_MAILER_AUTOCONFIRM
-        value: "false"
+        value: "true"
       # Rate limiting
       - key: GOTRUE_RATE_LIMIT_EMAIL_SENT
         value: "10"
       - key: GOTRUE_RATE_LIMIT_SMS_SENT
         value: "10"
 
-  # Storage - File Management Service (Production)
+  # Storage - File Management Service
   - name: storage
     image:
       registry_type: DOCKER_HUB
       registry: supabase
       repository: storage-api
-      tag: v1.11.1
+      tag: v1.33.0
     http_port: 5000
     instance_size_slug: apps-d-1vcpu-1gb
+    # instance_count: 2  # If autoscaling is disabled, uncomment and set instance_count (required)
 
     autoscaling:
-      min_instance_count: 2
-      max_instance_count: 8
+      min_instance_count: 1
+      max_instance_count: 3
       metrics:
         cpu:
           percent: 70
@@ -278,88 +284,173 @@ services:
       - key: ANON_KEY
         scope: RUN_TIME
         type: SECRET
-        value: ${SUPABASE_ANON_KEY}
+        value: <REQUIRED>
       - key: SERVICE_KEY
         scope: RUN_TIME
         type: SECRET
-        value: ${SUPABASE_SERVICE_KEY}
+        value: <REQUIRED>
       - key: POSTGREST_URL
         value: http://rest:3000
       - key: PGRST_JWT_SECRET
         scope: RUN_TIME
         type: SECRET
-        value: ${SUPABASE_JWT_SECRET}
+        value: <REQUIRED>
       - key: DATABASE_URL
         scope: RUN_TIME
         type: SECRET
-        value: ${MANAGED_DB_CONNECTION_STRING}
+        value: ${supabase-db.DATABASE_URL}
+      # SSL configuration for managed database
+      - key: DB_SSL
+        value: "true"
+      - key: NODE_TLS_REJECT_UNAUTHORIZED
+        value: "0"
       - key: FILE_SIZE_LIMIT
         value: "52428800"
       - key: STORAGE_BACKEND
         value: s3
       - key: TENANT_ID
         value: stub
-      # DigitalOcean Spaces
+      # DigitalOcean Spaces configuration
+      # Create Spaces bucket manually at: https://cloud.digitalocean.com/spaces/new
+      # Example bucket name: supabase-storage-space
       - key: GLOBAL_S3_BUCKET
         scope: RUN_TIME
-        value: ${SPACES_BUCKET}
+        value: <REQUIRED>  # e.g., "supabase-storage-space"
       - key: REGION
         scope: RUN_TIME
-        value: ${SPACES_REGION}
+        value: <REQUIRED>  # e.g., "nyc3"
       - key: GLOBAL_S3_ENDPOINT
         scope: RUN_TIME
-        value: https://${SPACES_REGION}.digitaloceanspaces.com
+        value: <REQUIRED>  # e.g., "https://nyc3.digitaloceanspaces.com"
       - key: AWS_ACCESS_KEY_ID
         scope: RUN_TIME
         type: SECRET
-        value: ${SPACES_ACCESS_KEY}
+        value: <REQUIRED>
       - key: AWS_SECRET_ACCESS_KEY
         scope: RUN_TIME
         type: SECRET
-        value: ${SPACES_SECRET_KEY}
+        value: <REQUIRED>
 
-workers:
+  # Realtime - WebSocket Server for Real-time Subscriptions
+  - name: realtime
+    image:
+      registry_type: DOCKER_HUB
+      registry: supabase
+      repository: realtime
+      tag: v2.68.0
+    http_port: 4000
+    instance_size_slug: apps-d-1vcpu-1gb
+    # instance_count: 2  # If autoscaling is disabled, uncomment and set instance_count (required)
+
+    autoscaling:
+      min_instance_count: 1
+      max_instance_count: 3
+      metrics:
+        cpu:
+          percent: 70
+
+    health_check:
+      http_path: /
+      initial_delay_seconds: 20
+      period_seconds: 10
+      timeout_seconds: 3
+      failure_threshold: 3
+      success_threshold: 1
+
+    envs:
+      - key: PORT
+        value: "4000"
+      - key: DB_HOST
+        scope: RUN_TIME
+        value: ${supabase-db.HOSTNAME}
+      - key: DB_PORT
+        scope: RUN_TIME
+        value: ${supabase-db.PORT}
+      - key: DB_USER
+        scope: RUN_TIME
+        value: ${supabase-db.USERNAME}
+      - key: DB_NAME
+        scope: RUN_TIME
+        value: ${supabase-db.DATABASE}
+      - key: DB_PASSWORD
+        scope: RUN_TIME
+        type: SECRET
+        value: ${supabase-db.PASSWORD}
+      - key: DB_SSL
+        value: "true"
+      # Realtime-specific database configuration
+      - key: DB_AFTER_CONNECT_QUERY
+        value: "SET search_path TO _realtime"
+      - key: DB_ENC_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: <REQUIRED>
+      - key: API_JWT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: <REQUIRED>
+      - key: SECRET_KEY_BASE
+        scope: RUN_TIME
+        type: SECRET
+        value: <REQUIRED>
+      # Self-hosting configuration
+      - key: SEED_SELF_HOST
+        value: "true"
+      - key: RUN_JANITOR
+        value: "true"
+      - key: RLIMIT_NOFILE
+        value: "65536"
+
   # Meta - Database Management API (internal only, accessed by Studio)
   - name: meta
     image:
       registry_type: DOCKER_HUB
       registry: supabase
       repository: postgres-meta
-      tag: v0.84.2
-    instance_size_slug: apps-s-1vcpu-0.5gb
-    instance_count: 2
+      tag: v0.95.1
+    internal_ports:
+      - 8080
+    instance_size_slug: apps-d-1vcpu-1gb
+    instance_count: 1
 
     envs:
       - key: PG_META_PORT
         value: "8080"
       - key: PG_META_DB_HOST
         scope: RUN_TIME
-        value: ${MANAGED_DB_HOSTNAME}
+        value: ${supabase-db.HOSTNAME}
       - key: PG_META_DB_PORT
         scope: RUN_TIME
-        value: ${MANAGED_DB_PORT}
+        value: ${supabase-db.PORT}
       - key: PG_META_DB_NAME
         scope: RUN_TIME
-        value: ${MANAGED_DB_DATABASE}
+        value: ${supabase-db.DATABASE}
       - key: PG_META_DB_USER
-        scope: RUN_TIME
-        value: ${MANAGED_DB_USERNAME}
+        value: supabase_admin
       - key: PG_META_DB_PASSWORD
         scope: RUN_TIME
         type: SECRET
-        value: ${MANAGED_DB_PASSWORD}
+        value: ${supabase-db.PASSWORD}
+      # SSL configuration for managed database connections
       - key: PG_META_DB_SSL_MODE
         value: "require"
-      - key: PG_META_CRYPTO_KEY
-        value: "dev-only-encryption-key-change-in-production-32chars"
+      - key: PG_META_DB_SSL_ROOT_CERT
+        scope: RUN_TIME
+        value: ${supabase-db.CA_CERT}
+      # Decryption key for Studio's encrypted connection strings
+      # Must match Studio's PG_META_CRYPTO_KEY
+      - key: CRYPTO_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: <REQUIRED>
 
 jobs:
-  # Database Initialization (runs after deployment)
+  # Database Initialization (runs before services start)
   - name: db-init
     git:
       repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
       branch: main
-    kind: POST_DEPLOY
+    kind: PRE_DEPLOY
     dockerfile_path: db-init/Dockerfile.dbinit
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-0.5gb
@@ -368,7 +459,7 @@ jobs:
       - key: DATABASE_URL
         scope: RUN_TIME
         type: SECRET
-        value: ${MANAGED_DB_CONNECTION_STRING}
+        value: ${supabase-db.DATABASE_URL}
 
 databases:
   - name: supabase-db

@@ -35,6 +35,10 @@ JWT_SECRET=$(openssl rand -base64 32)
 # Generate Crypto Key for Meta/Studio encryption
 CRYPTO_KEY=$(openssl rand -base64 32)
 
+# Generate Realtime encryption keys
+DB_ENC_KEY=$(openssl rand -base64 32)
+SECRET_KEY_BASE=$(openssl rand -base64 48)  # Must be at least 64 characters
+
 # Payloads
 ANON_PAYLOAD='{"role":"anon","iss":"supabase","iat":1609459200,"exp":9999999999}'
 SERVICE_PAYLOAD='{"role":"service_role","iss":"supabase","iat":1609459200,"exp":9999999999}'
@@ -46,16 +50,32 @@ SERVICE_KEY=$(generate_jwt "$SERVICE_PAYLOAD" "$JWT_SECRET")
 # Display results
 cat << EOF
 ================================================
-Supabase JWT Key Generator
+Supabase Key Generator
 ================================================
 
+Core JWT Keys:
+--------------
 SUPABASE_JWT_SECRET: $JWT_SECRET
 
 SUPABASE_ANON_KEY: $ANON_KEY
 
 SUPABASE_SERVICE_KEY: $SERVICE_KEY
 
+Studio/Meta Encryption:
+-----------------------
 CRYPTO_KEY: $CRYPTO_KEY
 
+Realtime Encryption:
+--------------------
+DB_ENC_KEY: $DB_ENC_KEY
+
+SECRET_KEY_BASE: $SECRET_KEY_BASE
+
+================================================
+Usage:
+- Use SUPABASE_JWT_SECRET for: PGRST_JWT_SECRET, GOTRUE_JWT_SECRET, API_JWT_SECRET
+- Use CRYPTO_KEY for: PG_META_CRYPTO_KEY (Studio), CRYPTO_KEY (Meta)
+- Use DB_ENC_KEY for: Realtime DB_ENC_KEY
+- Use SECRET_KEY_BASE for: Realtime SECRET_KEY_BASE
 ================================================
 EOF
