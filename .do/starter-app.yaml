@@ -179,15 +179,13 @@ services:
 jobs:
   # Database Initialization (runs before services start)
   - name: db-init
+    git:
+      repo_clone_url: https://github.com/AppPlatform-Templates/supabase-appplatform.git
+      branch: main
     kind: PRE_DEPLOY
+    dockerfile_path: db-init/Dockerfile.dbinit
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-0.5gb
-
-    github:
-      repo: AppPlatform-Templates/supabase-appplatform
-      branch: main
-
-    dockerfile_path: db-init/Dockerfile.dbinit
 
     envs:
       - key: DATABASE_URL
