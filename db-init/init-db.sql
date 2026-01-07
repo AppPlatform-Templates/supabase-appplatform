@@ -230,12 +230,6 @@ CREATE INDEX IF NOT EXISTS objects_bucket_id_idx ON storage.objects(bucket_id);
 CREATE INDEX IF NOT EXISTS objects_name_idx ON storage.objects(name);
 CREATE INDEX IF NOT EXISTS objects_bucket_id_name_idx ON storage.objects(bucket_id, name);
 
--- Grant permissions to storage roles
-GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
-GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_admin;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_admin;
-
 -- ============================================================================
 -- CONFIGURE SEARCH PATH (Supabase best practice)
 -- ============================================================================
