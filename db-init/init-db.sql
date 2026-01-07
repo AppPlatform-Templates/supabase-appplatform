@@ -133,6 +133,13 @@ ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON TABLES 
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON SEQUENCES TO supabase_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON ROUTINES TO supabase_admin;
 
+-- Grant storage permissions to service_role (CRITICAL for Storage API access)
+GRANT USAGE ON SCHEMA storage TO service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA storage TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON SEQUENCES TO service_role;
+
 -- Grant permissions on extensions schema
 GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO anon, authenticated, service_role;
