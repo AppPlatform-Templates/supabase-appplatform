@@ -115,7 +115,7 @@ services:
     envs:
       - key: PGRST_DB_URI
         scope: RUN_TIME
-        value: ${supabase-db.DATABASE_URL}
+        value: postgres://authenticator:${supabase-db.PASSWORD}@${supabase-db.HOSTNAME}:${supabase-db.PORT}/${supabase-db.DATABASE}
       - key: PGRST_DB_SCHEMAS
         value: public
       # Anonymous role for unauthenticated requests

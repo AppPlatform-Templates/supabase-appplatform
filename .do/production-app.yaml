@@ -167,7 +167,7 @@ services:
     envs:
       - key: PGRST_DB_URI
         scope: RUN_TIME
-        value: ${supabase-db.DATABASE_URL}
+        value: postgres://authenticator:${supabase-db.PASSWORD}@${supabase-db.HOSTNAME}:${supabase-db.PORT}/${supabase-db.DATABASE}
       - key: PGRST_DB_SCHEMAS
         value: public
       - key: PGRST_DB_ANON_ROLE
@@ -220,7 +220,7 @@ services:
       - key: GOTRUE_DB_DATABASE_URL
         scope: RUN_TIME
         type: SECRET
-        value: ${supabase-db.DATABASE_URL}
+        value: postgres://supabase_auth_admin:${supabase-db.PASSWORD}@${supabase-db.HOSTNAME}:${supabase-db.PORT}/${supabase-db.DATABASE}
       - key: GOTRUE_SITE_URL
         scope: RUN_TIME
         value: ${APP_URL}
@@ -298,7 +298,7 @@ services:
       - key: DATABASE_URL
         scope: RUN_TIME
         type: SECRET
-        value: ${supabase-db.DATABASE_URL}
+        value: postgres://supabase_storage_admin:${supabase-db.PASSWORD}@${supabase-db.HOSTNAME}:${supabase-db.PORT}/${supabase-db.DATABASE}
       # SSL configuration for managed database
       - key: DB_SSL
         value: "true"

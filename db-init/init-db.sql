@@ -13,7 +13,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS pgjwt WITH SCHEMA extensions;
 
--- Install optional extensions (fail silently if not available)
+-- Install optional extensions
 DO $$
 BEGIN
     CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
@@ -43,26 +43,62 @@ BEGIN
         CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
     END IF;
 
+END $$;
+
+-- Create service-specific users with LOGIN capability
+-- These users are used by individual Supabase services for least-privilege access
+-- All users share the same password as doadmin for simplicity in managed environments
+
+DO $$
+BEGIN
+    -- Create supabase_auth_admin
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-        CREATE ROLE supabase_auth_admin NOLOGIN NOINHERIT;
+        CREATE USER supabase_auth_admin NOINHERIT CREATEROLE LOGIN;
     END IF;
 
+    -- Create supabase_storage_admin
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
-        CREATE ROLE supabase_storage_admin NOLOGIN NOINHERIT;
+        CREATE USER supabase_storage_admin NOINHERIT CREATEROLE LOGIN;
+    END IF;
+
+    -- Create authenticator
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
+        CREATE USER authenticator NOINHERIT;
+    END IF;
+
+    -- Create supabase_admin
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+        CREATE USER supabase_admin CREATEROLE CREATEDB BYPASSRLS;
     END IF;
 END $$;
 
--- Create supabase_admin user (used by Studio/Meta)
--- Drop and recreate to ensure clean state with correct password
-DROP ROLE IF EXISTS supabase_admin CASCADE;
-CREATE ROLE supabase_admin LOGIN CREATEROLE CREATEDB BYPASSRLS;
+-- Grant API roles to authenticator (CRITICAL: allows PostgREST to switch roles based on JWT)
+-- These grants are idempotent - re-granting has no effect
+GRANT anon TO authenticator;
+GRANT authenticated TO authenticator;
+GRANT service_role TO authenticator;
 
--- Set password using psql variable (passed from run-db-init.sh)
+-- Set passwords using psql variable (passed from run-db-init.sh)
+-- All users use the same password as doadmin for simplicity
+-- ALTER USER is idempotent - setting password multiple times is safe
 \gset
-ALTER ROLE supabase_admin WITH PASSWORD :'admin_password';
+ALTER USER supabase_auth_admin WITH PASSWORD :'admin_password';
+ALTER USER supabase_storage_admin WITH PASSWORD :'admin_password';
+ALTER USER authenticator WITH PASSWORD :'admin_password';
+ALTER USER supabase_admin WITH PASSWORD :'admin_password';
 
 -- Grant database privileges to supabase_admin
 GRANT ALL PRIVILEGES ON DATABASE defaultdb TO supabase_admin;
+
+-- Grant CREATE on database to supabase_storage_admin (for migrations)
+GRANT CREATE ON DATABASE defaultdb TO supabase_storage_admin;
+
+-- Grant supabase_admin to authenticator (allows Studio to manage database)
+GRANT supabase_admin TO authenticator;
+
+-- Set statement timeouts for API roles (prevent long-running queries)
+ALTER ROLE anon SET statement_timeout = '3s';
+ALTER ROLE authenticated SET statement_timeout = '8s';
 
 -- Grant schema permissions to supabase_admin
 GRANT ALL ON SCHEMA public TO supabase_admin;
@@ -72,21 +108,18 @@ GRANT USAGE ON SCHEMA extensions TO supabase_admin;
 GRANT ALL ON SCHEMA realtime TO supabase_admin;
 GRANT ALL ON SCHEMA _realtime TO supabase_admin;
 
--- Grant auth schema permissions to doadmin (used by GoTrue for migrations)
+-- Transfer schema ownership to service-specific users
+-- Each service owns its own schema for migrations
+ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+ALTER SCHEMA storage OWNER TO supabase_storage_admin;
+ALTER SCHEMA realtime OWNER TO supabase_admin;
+ALTER SCHEMA _realtime OWNER TO supabase_admin;
+
+-- Keep doadmin grants as fallback for complex migrations that might need elevated privileges
 GRANT ALL ON SCHEMA auth TO doadmin;
-ALTER SCHEMA auth OWNER TO doadmin;
-
--- Grant realtime schema permissions to doadmin (used by Realtime for migrations)
-GRANT ALL ON SCHEMA realtime TO doadmin;
-ALTER SCHEMA realtime OWNER TO doadmin;
-
--- Grant _realtime schema permissions to doadmin (used by Realtime for internal tables)
-GRANT ALL ON SCHEMA _realtime TO doadmin;
-ALTER SCHEMA _realtime OWNER TO doadmin;
-
--- Grant storage schema permissions to doadmin (used by Storage API for migrations)
 GRANT ALL ON SCHEMA storage TO doadmin;
-ALTER SCHEMA storage OWNER TO doadmin;
+GRANT ALL ON SCHEMA realtime TO doadmin;
+GRANT ALL ON SCHEMA _realtime TO doadmin;
 
 -- Grant permissions to API roles (anon, authenticated, service_role) on public schema
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
@@ -149,6 +182,11 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authentic
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 
+-- Set default privileges for objects created by supabase_admin
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO postgres, anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON ROUTINES TO postgres, anon, authenticated, service_role;
+
 -- ============================================================================
 -- AUTH SCHEMA SETUP
 -- ============================================================================
@@ -169,12 +207,15 @@ GRANT ALL ON ALL ROUTINES IN SCHEMA auth TO supabase_admin;
 -- CREATE STORAGE SCHEMA TABLES
 -- ============================================================================
 -- Storage API expects these tables to exist
+-- NOTE: Foreign keys to auth.users are omitted because auth tables are created
+-- by GoTrue migrations after this script runs. Storage API handles auth checks
+-- via RLS policies and application logic instead.
 
 -- Buckets table
 CREATE TABLE IF NOT EXISTS storage.buckets (
     id TEXT PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
-    owner UUID REFERENCES auth.users(id),
+    owner UUID,  -- References auth.users(id) but FK added later by Storage migrations
     public BOOLEAN DEFAULT false,
     avif_autodetection BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -188,7 +229,7 @@ CREATE TABLE IF NOT EXISTS storage.objects (
     id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     bucket_id TEXT REFERENCES storage.buckets(id),
     name TEXT NOT NULL,
-    owner UUID REFERENCES auth.users(id),
+    owner UUID,  -- References auth.users(id) but FK added later by Storage migrations
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     last_accessed_at TIMESTAMPTZ DEFAULT NOW(),
@@ -243,8 +284,14 @@ ALTER ROLE service_role IN DATABASE defaultdb SET search_path = storage, public,
 -- Set search_path for doadmin
 ALTER ROLE doadmin IN DATABASE defaultdb SET search_path = storage, public, auth, extensions;
 
+-- Set search_path for authenticator (used by PostgREST)
+ALTER ROLE authenticator IN DATABASE defaultdb SET search_path = public, extensions;
+
 -- Set search_path for storage admin
 ALTER ROLE supabase_storage_admin IN DATABASE defaultdb SET search_path = storage, public, extensions;
 
 -- Set search_path for auth admin
 ALTER ROLE supabase_auth_admin IN DATABASE defaultdb SET search_path = auth, public, extensions;
+
+-- Set search_path for supabase_admin (don't include auth schema per official setup)
+ALTER ROLE supabase_admin IN DATABASE defaultdb SET search_path = public, extensions;
