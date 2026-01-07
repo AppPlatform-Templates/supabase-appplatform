@@ -1,10 +1,6 @@
 -- Supabase Database Initialization Script
 -- Idempotent - safe to run multiple times
 
--- Set database-level search_path FIRST (critical for connection pooling)
--- This ensures ALL connections inherit the correct schema search order
-ALTER DATABASE defaultdb SET search_path TO public, storage, auth, extensions;
-
 -- Create schemas
 CREATE SCHEMA IF NOT EXISTS auth;
 CREATE SCHEMA IF NOT EXISTS storage;
@@ -233,19 +229,25 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_admin;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_admin;
 
--- Set default search_path for storage admin (critical for Storage service to find tables)
-ALTER ROLE supabase_storage_admin SET search_path = storage, public, extensions;
+-- ============================================================================
+-- CONFIGURE SEARCH PATH (Supabase best practice)
+-- ============================================================================
+-- Use ALTER ROLE ... IN DATABASE for highest precedence
+-- This ensures search_path is set for each role specifically in this database
 
--- Set search_path for auth admin (critical for GoTrue to find auth tables)
-ALTER ROLE supabase_auth_admin SET search_path = auth, public, extensions;
+-- Set search_path for doadmin IN THIS DATABASE (Storage API connects as doadmin)
+-- CRITICAL: Must include storage schema first for Storage API to find buckets table
+ALTER ROLE doadmin IN DATABASE defaultdb SET search_path = storage, public, auth, extensions;
 
--- Set search_path for doadmin (Storage and other services connect as doadmin)
--- CRITICAL: Must include both storage and auth schemas
-ALTER ROLE doadmin SET search_path = public, auth, storage, extensions;
+-- Set search_path for storage admin
+ALTER ROLE supabase_storage_admin IN DATABASE defaultdb SET search_path = storage, public, extensions;
 
--- Set search_path for service_role (sometimes used by Storage)
-ALTER ROLE service_role SET search_path = public, storage, extensions;
+-- Set search_path for auth admin
+ALTER ROLE supabase_auth_admin IN DATABASE defaultdb SET search_path = auth, public, extensions;
+
+-- Set search_path for service_role
+ALTER ROLE service_role IN DATABASE defaultdb SET search_path = public, storage, auth, extensions;
 
 -- Set search_path for authenticated and anon roles
-ALTER ROLE authenticated SET search_path = public, storage, extensions;
-ALTER ROLE anon SET search_path = public, extensions;
+ALTER ROLE authenticated IN DATABASE defaultdb SET search_path = public, storage, extensions;
+ALTER ROLE anon IN DATABASE defaultdb SET search_path = public, extensions;
