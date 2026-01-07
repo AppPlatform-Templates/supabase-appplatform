@@ -235,8 +235,11 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_admin;
 -- Use ALTER ROLE ... IN DATABASE for highest precedence
 -- This ensures search_path is set for each role specifically in this database
 
--- Set search_path for doadmin IN THIS DATABASE (Storage API connects as doadmin)
--- CRITICAL: Must include storage schema first for Storage API to find buckets table
+-- Set search_path for service_role (Storage API uses this role!)
+-- CRITICAL: Must include storage schema FIRST for Storage API to find buckets table
+ALTER ROLE service_role IN DATABASE defaultdb SET search_path = storage, public, auth, extensions;
+
+-- Set search_path for doadmin
 ALTER ROLE doadmin IN DATABASE defaultdb SET search_path = storage, public, auth, extensions;
 
 -- Set search_path for storage admin
@@ -244,10 +247,3 @@ ALTER ROLE supabase_storage_admin IN DATABASE defaultdb SET search_path = storag
 
 -- Set search_path for auth admin
 ALTER ROLE supabase_auth_admin IN DATABASE defaultdb SET search_path = auth, public, extensions;
-
--- Set search_path for service_role
-ALTER ROLE service_role IN DATABASE defaultdb SET search_path = public, storage, auth, extensions;
-
--- Set search_path for authenticated and anon roles
-ALTER ROLE authenticated IN DATABASE defaultdb SET search_path = public, storage, extensions;
-ALTER ROLE anon IN DATABASE defaultdb SET search_path = public, extensions;
