@@ -18,8 +18,6 @@ This starter template includes:
 
 ### Option 1: One-Click Deploy (Recommended)
 
-Click the "Deploy to DO" button above, then follow these steps:
-
 #### Prerequisites
 
 1. **Create Database** (if you don't have one):
@@ -126,17 +124,29 @@ doctl apps logs $APP_ID db-init
 For custom modifications:
 
 1. **Fork the repository** on GitHub
+
 2. **Clone your fork**:
    ```bash
    git clone https://github.com/YOUR_USERNAME/supabase-appplatform.git
    cd supabase-appplatform
    ```
 
-3. **Customize** `db-init/init-db.sql` or app specs as needed
+3. **Update git repository URLs** in app spec files:
 
-4. **Update the Deploy button** in your fork's README to point to your repository
+   Edit `.do/starter-app.yaml` (or `.do/production-app.yaml`) and update the `db-init` job:
+   ```yaml
+   jobs:
+     - name: db-init
+       git:
+         repo_clone_url: https://github.com/YOUR_USERNAME/supabase-appplatform.git
+         branch: main
+   ```
 
-5. **Deploy** using the Deploy to DO button or CLI
+4. **Customize** `db-init/init-db.sql` or other files as needed
+
+5. **Update the Deploy button** in your fork's README to point to your repository
+
+6. **Deploy** using the Deploy to DO button or CLI
 
 ## Post-Deployment
 
