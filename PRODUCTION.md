@@ -1,221 +1,329 @@
 # Production Deployment Guide
 
-This guide covers upgrading from the basic development deployment to a production-ready configuration.
+This guide covers deploying the full production Supabase stack with Authentication, Storage, and Realtime services.
 
-## Production Configuration Overview
+## What's Included
 
-The production configuration ([.do/production-app.yaml](../.do/production-app.yaml)) includes:
-- Auto-scaling (2-10 instances per service)
-- Managed PostgreSQL (production tier with standby)
-- Professional instance sizes for better performance
+The production template (`.do/production-app.yaml`) includes all starter services plus:
+
+**Core Services** (from starter):
+- Studio - Web admin dashboard
+- PostgREST - Auto-generated REST API
+- Meta - Database introspection
+
+**Additional Production Services**:
+- **GoTrue** - Authentication service (email/password, OAuth, magic links)
+- **Storage API** - File management with DigitalOcean Spaces
+- **Realtime** - WebSocket subscriptions for database changes
+
+**Production Features**:
+- Auto-scaling (1-3 instances per service)
+- Production-tier database with standby
+- Professional instance sizes
 - Health checks and monitoring
-- Rate limiting configured
 
-For detailed pricing information, see:
-- [App Platform Pricing](https://www.digitalocean.com/pricing/app-platform)
-- [Managed Database Pricing](https://www.digitalocean.com/pricing/managed-databases)
-- [Spaces Pricing](https://www.digitalocean.com/pricing/spaces)
+## Prerequisites
 
-## Upgrade Steps
+Before deploying, you'll need:
 
-When your app is ready for production:
+### 1. DigitalOcean Spaces Bucket
 
-### 1. Upgrade Database
+Create a Spaces bucket for file storage:
 
 ```bash
-# Option A: In App Platform UI
-# Database → Settings → Upgrade to Production
+# Via UI: https://cloud.digitalocean.com/spaces/new
+# Choose a region (e.g., nyc3)
+# Bucket name example: supabase-storage-space
+```
 
-# Option B: Create new managed database via CLI
-doctl databases create supabase-prod \
+Generate Spaces API keys:
+```bash
+# Via UI: Account → API → Spaces Keys → Generate New Key
+# Save both:
+# - Access Key ID (e.g., DO00TPEJAYLRVX6TJRHQ)
+# - Secret Access Key (e.g., No+A3SZT...)
+```
+
+### 2. PostgreSQL Database
+
+Create a production database:
+
+```bash
+doctl databases create supabase-db \
   --engine pg \
-  --version 15 \
+  --version 17 \
   --size db-s-2vcpu-4gb \
-  --num-nodes 2 \
   --region nyc3
+
+# Wait for database to be ready (5-10 minutes)
+doctl databases list --format Name,Status
 ```
 
-**Database Sizing Guide**:
-- Small production (< 100 concurrent users): `db-s-2vcpu-4gb`, 1 node
-- Medium production (100-1000 users): `db-s-2vcpu-4gb`, 2 nodes (with standby)
-- Large production (1000+ users): `db-s-4vcpu-8gb`, 2 nodes
+**Status should show**: `online`
 
-### 2. Enable Auto-scaling
+### 3. Generate All Required Keys
 
-Update your app spec with auto-scaling configuration:
-
-```yaml
-services:
-  - name: rest
-    autoscaling:
-      min_instance_count: 2
-      max_instance_count: 10
-      metrics:
-        cpu:
-          percent: 70
-```
-
-See [.do/production-app.yaml](../.do/production-app.yaml) for complete configuration.
-
-### 3. Configure Custom Domain
+Clone the repository and generate keys:
 
 ```bash
-# Via UI: App Settings → Domains → Add Domain
+git clone https://github.com/AppPlatform-Templates/supabase-appplatform.git
+cd supabase-appplatform
 
-# Or via CLI:
-doctl apps update $APP_ID --spec production-spec.yaml
+chmod +x scripts/generate-keys.sh
+./scripts/generate-keys.sh
 ```
 
-### 4. Enable Monitoring
+**Save all generated keys** - you'll need:
+- `SUPABASE_JWT_SECRET` (for JWT validation)
+- `SUPABASE_ANON_KEY` (for client applications)
+- `SUPABASE_SERVICE_KEY` (for admin operations)
+- `CRYPTO_KEY` (for Studio-Meta encryption)
+- `DB_ENC_KEY` (for Realtime database encryption)
+- `SECRET_KEY_BASE` (for Realtime session encryption)
 
-**Set up Log Forwarding** (choose one):
+## Deployment Steps
 
-```yaml
-log_destinations:
-  - name: datadog
-    datadog:
-      api_key: ${DATADOG_API_KEY}
-      endpoint: https://http-intake.logs.datadoghq.com
-```
+### Step 1: Configure Production Template
 
-Or use Logtail:
+Edit `.do/production-app.yaml` and replace all `<REQUIRED>` placeholders with generated keys:
 
-```yaml
-log_destinations:
-  - name: logtail
-    logtail:
-      token: ${LOGTAIL_TOKEN}
-```
+#### JWT and Encryption Keys
 
-### 5. Set up Backups
+| Service | Environment Variable | Generated Key to Use |
+|---------|---------------------|---------------------|
+| **studio** | `PG_META_CRYPTO_KEY` | `CRYPTO_KEY` |
+| **studio** | `SUPABASE_ANON_KEY` | `SUPABASE_ANON_KEY` |
+| **studio** | `SUPABASE_SERVICE_KEY` | `SUPABASE_SERVICE_KEY` |
+| **rest** | `PGRST_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+| **auth** | `GOTRUE_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+| **storage** | `ANON_KEY` | `SUPABASE_ANON_KEY` |
+| **storage** | `SERVICE_KEY` | `SUPABASE_SERVICE_KEY` |
+| **storage** | `PGRST_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+| **realtime** | `DB_ENC_KEY` | `DB_ENC_KEY` |
+| **realtime** | `API_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+| **realtime** | `SECRET_KEY_BASE` | `SECRET_KEY_BASE` |
+| **meta** | `CRYPTO_KEY` | `CRYPTO_KEY` |
 
-Managed PostgreSQL includes automatic backups:
+#### Spaces Configuration (for Storage service)
+
+| Environment Variable | Your Value | Example |
+|---------------------|------------|---------|
+| `GLOBAL_S3_BUCKET` | Your bucket name | `supabase-storage-space` |
+| `REGION` | Your Spaces region | `nyc3` |
+| `GLOBAL_S3_ENDPOINT` | Your endpoint URL | `https://nyc3.digitaloceanspaces.com` |
+| `AWS_ACCESS_KEY_ID` | Your Access Key ID | `DO00TPEJAYLRVX6TJRHQ` |
+| `AWS_SECRET_ACCESS_KEY` | Your Secret Access Key | `No+A3SZT6vxe...` |
+
+### Step 2: Deploy
 
 ```bash
-# Configure backup schedule via UI:
-# Database → Settings → Configure Backup Schedule
-
-# Or check current backup config:
-doctl databases backups list <database-id>
+doctl apps create --spec .do/production-app.yaml
 ```
 
-## Security Checklist
+### Step 3: Monitor Deployment
 
-Before going live:
-
-- [ ] Rotate all JWT keys
-- [ ] Enable database connection pooling
-- [ ] Set up database firewall (restrict to App Platform IPs)
-- [ ] Configure custom domain with SSL
-- [ ] Enable log forwarding
-- [ ] Set up monitoring alerts
-- [ ] Test disaster recovery procedures
-- [ ] Implement rate limiting (already configured in GoTrue)
-- [ ] Review and test all RLS policies
-- [ ] Never expose SERVICE_ROLE_KEY to clients
-- [ ] Use strong SMTP credentials and enable 2FA
-
-## Connection Pool Calculation
-
-For production auto-scaling:
-
-```
-PostgREST: 10 connections × max 10 instances = 100 connections
-GoTrue: 5 connections × max 8 instances = 40 connections
-Storage: 5 connections × max 8 instances = 40 connections
-Meta: 2 connections × 2 instances = 4 connections
-Buffer: 10 connections
------------------------------------------------------------
-Total: ~194 connections needed at max scale
+**Phase 1: Building** (2-3 minutes)
+```bash
+APP_ID=$(doctl apps list --format ID --no-header)
+doctl apps list-deployments $APP_ID
 ```
 
-**Recommended**: `db-s-4vcpu-8gb` (220 connections) for full auto-scaling capacity.
+You'll see: `BUILDING` → `DEPLOYING` → `ACTIVE`
 
-## Performance Optimization
+**Phase 2: Database Initialization** (running during deployment)
+```bash
+# Check db-init logs
+doctl apps logs $APP_ID db-init
+```
 
-### Instance Sizing
+Look for: `✓ Database initialization completed successfully`
 
-Development (basic-xxs):
-- 512MB RAM, 1 vCPU
-- Good for testing and light workloads
+**Phase 3: Service Health Checks** (1-2 minutes)
 
-Production (professional-xs):
-- 1GB RAM, 1 vCPU
-- Better performance under load
+Services start and health checks begin. Wait for all to pass.
 
-### Caching Strategies
+**Total deployment time**: ~8-12 minutes
 
-1. **Enable CDN** for static assets via custom domain
-2. **Configure HTTP caching headers** in PostgREST
-3. **Use database connection pooling** (PgBouncer if needed)
+### Step 4: Verify Deployment
+
+```bash
+# Get app URL
+APP_URL=$(doctl apps get $APP_ID --format DefaultIngress --no-header)
+
+echo "Studio: https://$APP_URL"
+echo "REST API: https://$APP_URL/rest/v1/"
+echo "Auth: https://$APP_URL/auth/v1/"
+echo "Storage: https://$APP_URL/storage/v1/"
+echo "Realtime: https://$APP_URL/realtime/v1/"
+```
+
+## Post-Deployment Testing
+
+### 1. Test PostgREST API
+
+```bash
+# List available endpoints
+curl "https://$APP_URL/rest/v1/" \
+  -H "apikey: $SUPABASE_ANON_KEY"
+```
+
+### 2. Test Auth Service
+
+```bash
+# Health check
+curl "https://$APP_URL/auth/v1/health" \
+  -H "apikey: $SUPABASE_ANON_KEY"
+
+# Create a test user
+curl -X POST "https://$APP_URL/auth/v1/signup" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "testpassword123"
+  }'
+```
+
+### 3. Test Storage Service
+
+```bash
+# Health check
+curl "https://$APP_URL/storage/v1/status" \
+  -H "apikey: $SUPABASE_SERVICE_KEY"
+
+# Create a bucket
+curl -X POST "https://$APP_URL/storage/v1/bucket" \
+  -H "apikey: $SUPABASE_SERVICE_KEY" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "avatars",
+    "name": "avatars",
+    "public": true
+  }'
+
+# Upload a file
+echo "test content" > test.txt
+curl -X POST "https://$APP_URL/storage/v1/object/avatars/test.txt" \
+  -H "apikey: $SUPABASE_SERVICE_KEY" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+  -F "file=@test.txt"
+```
+
+### 4. Test Realtime Service
+
+```bash
+# Check Realtime status page
+curl "https://$APP_URL/realtime/v1/status" \
+  -H "apikey: $SUPABASE_ANON_KEY"
+```
+
+For WebSocket testing, use the Studio interface or a Supabase client library.
+
+## Configuration Options
+
+### Email Provider (Optional)
+
+To enable email verification and password reset:
+
+Edit `.do/production-app.yaml` auth service and add:
+
+```yaml
+# SMTP Configuration
+- key: GOTRUE_SMTP_HOST
+  value: smtp.sendgrid.net
+
+- key: GOTRUE_SMTP_PORT
+  value: "587"
+
+- key: GOTRUE_SMTP_USER
+  type: SECRET
+  value: apikey
+
+- key: GOTRUE_SMTP_PASS
+  type: SECRET
+  value: <your-sendgrid-api-key>
+
+- key: GOTRUE_SMTP_ADMIN_EMAIL
+  value: admin@yourdomain.com
+
+# Disable auto-confirm
+- key: GOTRUE_MAILER_AUTOCONFIRM
+  value: "false"
+```
+
+### OAuth Providers (Optional)
+
+Add OAuth configuration to GoTrue service:
+
+```yaml
+# Google OAuth
+- key: GOTRUE_EXTERNAL_GOOGLE_ENABLED
+  value: "true"
+
+- key: GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID
+  type: SECRET
+  value: <your-google-client-id>
+
+- key: GOTRUE_EXTERNAL_GOOGLE_SECRET
+  type: SECRET
+  value: <your-google-client-secret>
+
+- key: GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI
+  value: https://$APP_URL/auth/v1/callback
+```
 
 ## Monitoring
 
 ### Key Metrics to Watch
 
-- CPU usage across all services
-- Memory usage (watch for OOM errors)
-- Database connection pool utilization
-- API response times
-- Error rates (4xx, 5xx)
-- Storage API upload/download rates
-
-### Alerts to Configure
-
-- Service health check failures
-- Database CPU > 80%
-- Instance count approaching max autoscale limit
-- Disk usage > 80%
-- Unusual API traffic patterns
-
-## Disaster Recovery
-
-### Backup Strategy
-
-1. **Database**: Automatic daily backups (managed PostgreSQL)
-2. **Application State**: Store in database, not filesystem
-3. **Spaces**: Enable versioning for object storage
-
-### Recovery Procedures
-
 ```bash
-# 1. Restore database from backup
-doctl databases backups restore <database-id> <backup-id>
+# View service logs
+doctl apps logs $APP_ID studio --follow
+doctl apps logs $APP_ID rest --follow
+doctl apps logs $APP_ID auth --follow
+doctl apps logs $APP_ID storage --follow
+doctl apps logs $APP_ID realtime --follow
 
-# 2. Redeploy application if needed
-doctl apps create-deployment $APP_ID
-
-# 3. Verify all services are healthy
+# Check deployment status
 doctl apps get $APP_ID
+
+# List deployments
+doctl apps list-deployments $APP_ID
 ```
 
-## Scaling Guidelines
+### Health Checks
 
-### When to Scale Up
+Each service has health check endpoints:
 
-- CPU consistently > 70% for 10+ minutes
-- Response times increasing
-- Health check failures
-- Database connection pool exhausted
+- Studio: `https://$APP_URL/api/platform/profile`
+- PostgREST: `https://$APP_URL/rest/v1/`
+- Auth: `https://$APP_URL/auth/v1/health`
+- Storage: `https://$APP_URL/storage/v1/status`
+- Realtime: `https://$APP_URL/realtime/v1/`
 
-### When to Scale Out
+## Troubleshooting
 
-- Add more instances when:
-  - Request rate increasing
-  - Need better availability
-  - Want zero-downtime deployments
+### View Logs for Debugging
 
-### When to Optimize
+```bash
+# Recent errors from all services
+doctl apps logs $APP_ID --type deploy --tail 100
 
-Before adding resources, check for:
-- N+1 query problems
-- Missing database indexes
-- Inefficient RLS policies
-- Large file uploads blocking workers
+# Specific service runtime logs
+doctl apps logs $APP_ID <service-name> --type run --tail 50
+```
 
-## Additional Resources
+## Resources
 
-- [DigitalOcean App Platform Pricing](https://www.digitalocean.com/pricing/app-platform)
-- [Managed Database Pricing](https://www.digitalocean.com/pricing/managed-databases)
-- [Spaces Pricing](https://www.digitalocean.com/pricing/spaces)
-- [Supabase Self-Hosting Guide](https://supabase.com/docs/guides/self-hosting)
+- [Supabase Documentation](https://supabase.com/docs)
+- [App Platform Documentation](https://docs.digitalocean.com/products/app-platform/)
+- [Spaces Documentation](https://docs.digitalocean.com/products/spaces/)
+- [Managed PostgreSQL](https://docs.digitalocean.com/products/databases/postgresql/)
+- [DigitalOcean Pricing](https://www.digitalocean.com/pricing)
+
+## Support
+
+- [DigitalOcean Community](https://www.digitalocean.com/community)
+- [Supabase Discord](https://discord.supabase.com)
+- [GitHub Issues](https://github.com/AppPlatform-Templates/supabase-appplatform/issues)

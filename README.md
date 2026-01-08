@@ -1,65 +1,77 @@
 # Supabase on DigitalOcean App Platform
 
-Deploy your own Supabase instance on DigitalOcean App Platform with a managed PostgreSQL database. This template provides a simplified, production-ready setup that transforms your database into a complete backend platform with authentication-ready REST API.
+Deploy your own Supabase instance on DigitalOcean App Platform with a managed PostgreSQL database. This template provides a simplified setup that transforms your database into a complete backend platform with an auto-generated REST API and web dashboard.
 
 [![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/AppPlatform-Templates/supabase-appplatform/tree/main)
 
-## Overview
+## What You Get
 
-[Supabase](https://supabase.com) is an open-source Firebase alternative that provides a complete backend platform built on PostgreSQL. This template deploys the core Supabase services to App Platform, giving you a production-ready backend with web interface, auto-generated REST API, and database management capabilities.
+This starter template includes:
 
-## Key Features
-
-**Core Functionality**:
-- **Auto-generated REST API** - PostgREST instantly creates RESTful endpoints from your database schema
-- **Web Dashboard** - Studio provides a visual interface for database management, SQL queries, and API exploration
-- **Row Level Security** - PostgreSQL's built-in RLS provides fine-grained access control
-- **Database Management** - Meta service powers Studio's database operations and schema inspection
-
-**Included Components**:
-- Supabase Studio (Web UI)
-- PostgREST (REST API server)
-- Postgres Meta (Database management API)
-- Managed PostgreSQL 17 database with automatic initialization
-- JWT-based authentication for API access
-- SSL/TLS encryption
+- **Studio** - Web-based admin dashboard for database management
+- **PostgREST** - Auto-generated REST API from your database schema
+- **Meta** - Database introspection API (powers Studio features)
+- **PostgreSQL 17** - Managed database with automatic initialization
+- **JWT Authentication** - Secure API access with row-level security
 
 ## Deployment Options
 
-### Quick Deployment (Recommended)
+### Option 1: One-Click Deploy (Recommended)
 
-**One-Click Deployment**: Click the "Deploy to DO" button above, then follow these steps before clicking "Create App":
+Click the "Deploy to DO" button above, then follow these steps:
 
-**Before Deployment - Required Steps**:
+#### Prerequisites
 
-1. **Create Managed Database** (if you don't have one):
-   - Use Step 1 from CLI Deployment below to create a PostgreSQL database
-   - Wait for the database to be ready (status: "online")
+1. **Create Database** (if you don't have one):
+   ```bash
+   doctl databases create supabase-db \
+     --engine pg \
+     --version 17 \
+     --size db-s-1vcpu-2gb \
+     --region nyc3
+   ```
 
-2. **Attach Database**:
-   - In the App Platform UI, scroll to the "Database" section
-   - Click "Attach Database" and select your `supabase-db` database
+   Wait for database status to be `online` (5-10 minutes):
+   ```bash
+   doctl databases list --format Name,Status
+   ```
 
-3. **Generate JWT Keys**:
-   - Run the key generation script (see Step 2 from CLI Deployment below)
-   - Save all four generated keys: `SUPABASE_JWT_SECRET`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `CRYPTO_KEY`
+2. **Generate Keys**:
+   ```bash
+   git clone https://github.com/AppPlatform-Templates/supabase-appplatform.git
+   cd supabase-appplatform
+   chmod +x scripts/generate-keys.sh
+   ./scripts/generate-keys.sh
+   ```
 
-4. **Replace Required Keys**:
-   - In the App Platform UI, expand each component (studio, rest, meta)
-   - Find environment variables marked with `<REQUIRED>` and replace them:
-     - **studio**: Replace `PG_META_CRYPTO_KEY`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`
-     - **rest**: Replace `PGRST_JWT_SECRET`
-     - **meta**: Replace `CRYPTO_KEY`
+   Save the generated keys - you'll need them in the next step.
 
-5. **Click "Create App"** to deploy
+#### Deployment Steps
 
-### CLI Deployment
+1. Click "Deploy to DO" button
+2. In App Platform UI, scroll to **Resources** section
+3. Click "Attach Database" and select `supabase-db`
+4. Expand each component and replace `<REQUIRED>` values:
 
-For more control over your deployment configuration:
+   | Component | Environment Variable | Use This Key |
+   |-----------|---------------------|--------------|
+   | **studio** | `PG_META_CRYPTO_KEY` | `CRYPTO_KEY` |
+   | **studio** | `SUPABASE_ANON_KEY` | `SUPABASE_ANON_KEY` |
+   | **studio** | `SUPABASE_SERVICE_KEY` | `SUPABASE_SERVICE_KEY` |
+   | **rest** | `PGRST_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+   | **meta** | `CRYPTO_KEY` | `CRYPTO_KEY` |
 
-**Step 1: Create Managed Database**
+5. Click **Create App**
+6. Wait for deployment to complete (3-5 minutes)
+
+### Option 2: CLI Deployment
+
+For more control over your deployment:
+
+#### Step 1: Prerequisites
+
+Create a managed database:
 ```bash
-# Create PostgreSQL database - name must match .do/starter-app.yaml
 doctl databases create supabase-db \
   --engine pg \
   --version 17 \
@@ -67,75 +79,71 @@ doctl databases create supabase-db \
   --region nyc3
 
 # Wait for database to be ready (5-10 minutes)
-# Check status: doctl databases list --format Name,Status
+doctl databases list --format Name,Status
 ```
 
-**Step 2: Clone and Generate Keys**
+#### Step 2: Clone and Configure
+
 ```bash
 git clone https://github.com/AppPlatform-Templates/supabase-appplatform.git
 cd supabase-appplatform
 
-# Generate all required keys (JWT secret, anon key, service key, crypto key)
+# Generate JWT and encryption keys
 chmod +x scripts/generate-keys.sh
 ./scripts/generate-keys.sh
 ```
 
-**Step 3: Update Configuration**
+#### Step 3: Update App Spec
 
-Open `.do/starter-app.yaml` and replace `<REQUIRED>` placeholders with your generated keys:
+Edit `.do/starter-app.yaml` and replace all `<REQUIRED>` placeholders with generated keys:
 
-| Component | Key to Replace | Use Generated Key |
-|-----------|----------------|-------------------|
-| studio | `PG_META_CRYPTO_KEY` | `CRYPTO_KEY` |
-| studio | `SUPABASE_ANON_KEY` | `SUPABASE_ANON_KEY` |
-| studio | `SUPABASE_SERVICE_KEY` | `SUPABASE_SERVICE_KEY` |
-| rest | `PGRST_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
-| meta | `CRYPTO_KEY` | `CRYPTO_KEY` |
+| Service | Environment Variable | Generated Key to Use |
+|---------|---------------------|---------------------|
+| **studio** | `PG_META_CRYPTO_KEY` | `CRYPTO_KEY` |
+| **studio** | `SUPABASE_ANON_KEY` | `SUPABASE_ANON_KEY` |
+| **studio** | `SUPABASE_SERVICE_KEY` | `SUPABASE_SERVICE_KEY` |
+| **rest** | `PGRST_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+| **meta** | `CRYPTO_KEY` | `CRYPTO_KEY` |
 
-**Step 4: Deploy**
+#### Step 4: Deploy
+
 ```bash
 doctl apps create --spec .do/starter-app.yaml
 ```
 
-The deployment includes a pre-deploy job that automatically initializes your database with required schemas, roles, and permissions.
-
-## Customization Approaches
-
-### Using the Included Database Initialization
-
-The template includes a `db-init` pre-deploy job that automatically sets up:
-- Database roles (`anon`, `authenticated`, `service_role`)
-- PostgreSQL extensions (`pgcrypto`, `pgjwt`)
-- Row Level Security policies
-- API permissions
-
-You can customize the initialization by modifying `db-init/init-db.sql` before deployment.
-
-### Connecting Existing Databases
-
-To use an existing PostgreSQL database:
-
-1. Skip the database creation step
-2. Update `.do/starter-app.yaml` to reference your existing database
-3. Manually run the initialization scripts from `db-init/init-db.sql`
-4. Configure `PGRST_DB_SCHEMAS` to match your schema structure
-
-### Schema Management
-
-**Important**: Creating new schemas through the Studio UI is not supported due to DigitalOcean's managed database security model. Use the SQL Editor instead:
-
+Wait for deployment to complete (3-5 minutes):
 ```bash
-CREATE SCHEMA my_schema;
+# Check deployment status
+doctl apps list
+
+# View logs
+APP_ID=$(doctl apps list --format ID --no-header)
+doctl apps logs $APP_ID db-init
 ```
 
-All other database operations work normally through Studio.
+### Option 3: Fork and Customize
+
+For custom modifications:
+
+1. **Fork the repository** on GitHub
+2. **Clone your fork**:
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/supabase-appplatform.git
+   cd supabase-appplatform
+   ```
+
+3. **Customize** `db-init/init-db.sql` or app specs as needed
+
+4. **Update the Deploy button** in your fork's README to point to your repository
+
+5. **Deploy** using the Deploy to DO button or CLI
 
 ## Post-Deployment
 
 ### Access Your Instance
 
 ```bash
-# Get your app ID and URL
+# Get your app URL
 APP_ID=$(doctl apps list --format ID --no-header)
 APP_URL=$(doctl apps get $APP_ID --format DefaultIngress --no-header)
 
@@ -145,77 +153,91 @@ echo "REST API: https://$APP_URL/rest/v1/"
 
 ### Verify Deployment
 
+Check that database initialization completed:
 ```bash
-# Check database initialization
-doctl apps logs $APP_ID --component db-init
-
-# Monitor services
-doctl apps logs $APP_ID --component studio --follow
-doctl apps logs $APP_ID --component rest --follow
+doctl apps logs $APP_ID db-init
 ```
+
+You should see: `✓ Database initialization completed successfully`
 
 ### Test the REST API
 
 ```bash
-# List available tables/endpoints
-curl https://$APP_URL/rest/v1/ \
-  -H "apikey: $SUPABASE_ANON_KEY"
+# Replace with your SUPABASE_ANON_KEY
+ANON_KEY="your-anon-key-here"
 
-# Query a table (after creating one in Studio)
-curl https://$APP_URL/rest/v1/your_table \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+# List available endpoints
+curl "https://$APP_URL/rest/v1/" \
+  -H "apikey: $ANON_KEY"
+
+# Create a test table in Studio, then query it
+curl "https://$APP_URL/rest/v1/your_table" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $ANON_KEY"
 ```
 
-## Architecture
+## What's Included
 
-| Component | Purpose | Accessibility |
+### Database Initialization
+
+The deployment automatically sets up:
+- Database roles: `anon`, `authenticated`, `service_role`
+- PostgreSQL extensions: `pgcrypto`, `pgjwt`, `uuid-ossp`
+- Default search paths for each role
+- Permissions for API access
+
+### Components
+
+| Component | Purpose | Accessible At |
 |-----------|---------|---------------|
-| **Studio** | Web admin dashboard | Public (HTTPS) |
-| **PostgREST** | Auto-generated REST API | Public (HTTPS at /rest/v1/*) |
-| **Meta** | Database management API | Internal (Studio only) |
-| **PostgreSQL** | Primary database | Managed service |
+| **Studio** | Web admin dashboard | `https://your-app.ondigitalocean.app/` |
+| **PostgREST** | Auto-generated REST API | `https://your-app.ondigitalocean.app/rest/v1/` |
+| **Meta** | Database introspection | Internal (used by Studio) |
 
-**Routing**:
-- `https://your-app.ondigitalocean.app/` → Studio dashboard
-- `https://your-app.ondigitalocean.app/rest/v1/*` → PostgREST API
+### Important Notes
 
-## Pricing
+- **Schema Creation**: Use Studio's SQL Editor to create schemas (not the UI). DigitalOcean's managed databases have security restrictions.
+  ```sql
+  CREATE SCHEMA my_schema;
+  ```
 
-For detailed pricing and instance sizing options, visit the [DigitalOcean App Platform Pricing](https://www.digitalocean.com/pricing/app-platform) page.
+- **JWT Keys**: Keep your `SUPABASE_SERVICE_KEY` secure - it bypasses all Row Level Security policies.
+
+- **API Key**: The `SUPABASE_ANON_KEY` is safe to use in client applications.
+
+## Need More Features?
+
+This starter template focuses on core functionality. For production deployments with additional services:
+
+- **Authentication** (email/password, OAuth, magic links)
+- **File Storage** (S3-compatible with DigitalOcean Spaces)
+- **Realtime** (WebSocket subscriptions for database changes)
+
+See **[PRODUCTION.md](PRODUCTION.md)** for the full production deployment guide.
 
 ## Clean Up
 
 To delete your deployment:
 
 ```bash
-# Delete app
+# Delete the app
+APP_ID=$(doctl apps list --format ID --no-header)
 doctl apps delete $APP_ID
 
-# Delete database
+# Delete the database
 DB_ID=$(doctl databases list --format ID --no-header)
 doctl databases delete $DB_ID
 ```
 
-## Learn More
+## Resources
 
-### Supabase Resources
-- [Official Documentation](https://supabase.com/docs) - Complete guide to Supabase features
-- [Self-Hosting Guide](https://supabase.com/docs/guides/self-hosting) - Advanced configuration options
-- [PostgREST API Reference](https://postgrest.org/en/stable/references/api.html) - REST API documentation
-- [Row Level Security](https://supabase.com/docs/guides/auth/row-level-security) - Security patterns
+- [Supabase Documentation](https://supabase.com/docs)
+- [PostgREST API Reference](https://postgrest.org/en/stable/references/api.html)
+- [App Platform Documentation](https://docs.digitalocean.com/products/app-platform/)
+- [Row Level Security Guide](https://supabase.com/docs/guides/auth/row-level-security)
 
-### DigitalOcean Resources
-- [App Platform Documentation](https://docs.digitalocean.com/products/app-platform/) - Platform features and guides
-- [Managed PostgreSQL](https://docs.digitalocean.com/products/databases/postgresql/) - Database management
-- [App Spec Reference](https://docs.digitalocean.com/products/app-platform/reference/app-spec/) - Configuration options
+## Support
 
-### Community & Support
-- [Supabase Discord](https://discord.supabase.com) - Community chat and support
-- [Supabase GitHub](https://github.com/supabase/supabase) - Source code and issues
-- [DigitalOcean Community](https://www.digitalocean.com/community) - Tutorials and Q&A
-- [DigitalOcean Support](https://www.digitalocean.com/support) - Official support channels
-
----
-
-**Note**: This template provides core Supabase functionality (Studio, PostgREST, Meta). For additional features like authentication (GoTrue), real-time subscriptions, and file storage, see the production template (`.do/production-app.yaml`) with expanded services.
+- [DigitalOcean Community](https://www.digitalocean.com/community)
+- [Supabase Discord](https://discord.supabase.com)
+- [GitHub Issues](https://github.com/AppPlatform-Templates/supabase-appplatform/issues)
