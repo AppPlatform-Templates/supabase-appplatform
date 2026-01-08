@@ -370,7 +370,7 @@ services:
         value: ${supabase-db.PORT}
       - key: DB_USER
         scope: RUN_TIME
-        value: ${supabase-db.USERNAME}
+        value: supabase_admin
       - key: DB_NAME
         scope: RUN_TIME
         value: ${supabase-db.DATABASE}
@@ -383,6 +383,10 @@ services:
       # Realtime-specific database configuration
       - key: DB_AFTER_CONNECT_QUERY
         value: "SET search_path TO _realtime"
+      - key: DB_IP_VERSION
+        value: "ipv4"
+      - key: ERL_AFLAGS
+        value: "-proto_dist inet_tcp"
       - key: DB_ENC_KEY
         scope: RUN_TIME
         type: SECRET

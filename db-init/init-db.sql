@@ -72,11 +72,16 @@ BEGIN
     END IF;
 END $$;
 
--- Grant API roles to authenticator (CRITICAL: allows PostgREST to switch roles based on JWT)
--- These grants are idempotent - re-granting has no effect
+-- Grant API roles to authenticator (allows PostgREST to switch roles based on JWT)
 GRANT anon TO authenticator;
 GRANT authenticated TO authenticator;
 GRANT service_role TO authenticator;
+
+-- Grant service_role to storage admin (allows Storage API to impersonate service_role)
+GRANT service_role TO supabase_storage_admin;
+
+-- Grant service_role to auth admin (allows Auth service to impersonate service_role)
+GRANT service_role TO supabase_auth_admin;
 
 -- Set passwords using psql variable (passed from run-db-init.sh)
 -- All users use the same password as doadmin for simplicity
@@ -270,6 +275,12 @@ CREATE TABLE IF NOT EXISTS storage.s3_multipart_uploads_parts (
 CREATE INDEX IF NOT EXISTS objects_bucket_id_idx ON storage.objects(bucket_id);
 CREATE INDEX IF NOT EXISTS objects_name_idx ON storage.objects(name);
 CREATE INDEX IF NOT EXISTS objects_bucket_id_name_idx ON storage.objects(bucket_id, name);
+
+-- Transfer ownership of storage tables to supabase_storage_admin
+ALTER TABLE IF EXISTS storage.buckets OWNER TO supabase_storage_admin;
+ALTER TABLE IF EXISTS storage.objects OWNER TO supabase_storage_admin;
+ALTER TABLE IF EXISTS storage.s3_multipart_uploads OWNER TO supabase_storage_admin;
+ALTER TABLE IF EXISTS storage.s3_multipart_uploads_parts OWNER TO supabase_storage_admin;
 
 -- ============================================================================
 -- CONFIGURE SEARCH PATH (Supabase best practice)
