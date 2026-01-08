@@ -39,26 +39,20 @@ spec:
           value: http://meta:8080
         # Database connection details (for Studio dashboard display)
         - key: POSTGRES_HOST
-          scope: RUN_TIME
           value: ${supabase-db.HOSTNAME}
         - key: POSTGRES_PORT
-          scope: RUN_TIME
           value: ${supabase-db.PORT}
         - key: POSTGRES_DB
-          scope: RUN_TIME
           value: ${supabase-db.DATABASE}
         - key: POSTGRES_USER
-          scope: RUN_TIME
           value: ${supabase-db.USERNAME}
         - key: POSTGRES_PASSWORD
-          scope: RUN_TIME
           type: SECRET
           value: ${supabase-db.PASSWORD}
         # Encryption key for Studio-Meta communication
         # Studio encrypts connection strings using PG_META_CRYPTO_KEY (with username: supabase_admin)
         # Meta decrypts using CRYPTO_KEY
         - key: PG_META_CRYPTO_KEY
-          scope: RUN_TIME
           type: SECRET
           value: <REQUIRED>
         - key: DEFAULT_ORGANIZATION_NAME
@@ -66,17 +60,13 @@ spec:
         - key: DEFAULT_PROJECT_NAME
           value: "My Project"
         - key: SUPABASE_URL
-          scope: RUN_TIME
           value: ${APP_URL}
         - key: SUPABASE_PUBLIC_URL
-          scope: RUN_TIME
           value: ${APP_URL}
         - key: SUPABASE_ANON_KEY
-          scope: RUN_TIME
           type: SECRET
           value: <REQUIRED>
         - key: SUPABASE_SERVICE_KEY
-          scope: RUN_TIME
           type: SECRET
           value: <REQUIRED>
         - key: NEXT_PUBLIC_ENABLE_LOGS
@@ -109,7 +99,6 @@ spec:
         failure_threshold: 3
       envs:
         - key: PGRST_DB_URI
-          scope: RUN_TIME
           value: ${supabase-db.DATABASE_URL}
         - key: PGRST_DB_SCHEMAS
           value: public
@@ -123,7 +112,6 @@ spec:
           value: "3000"
         # JWT Configuration (required for authentication)
         - key: PGRST_JWT_SECRET
-          scope: RUN_TIME
           type: SECRET
           value: <REQUIRED>
         - key: PGRST_JWT_AUD
@@ -144,30 +132,24 @@ spec:
         - key: PG_META_PORT
           value: "8080"
         - key: PG_META_DB_HOST
-          scope: RUN_TIME
           value: ${supabase-db.HOSTNAME}
         - key: PG_META_DB_PORT
-          scope: RUN_TIME
           value: ${supabase-db.PORT}
         - key: PG_META_DB_NAME
-          scope: RUN_TIME
           value: ${supabase-db.DATABASE}
         - key: PG_META_DB_USER
           value: supabase_admin
         - key: PG_META_DB_PASSWORD
-          scope: RUN_TIME
           type: SECRET
           value: ${supabase-db.PASSWORD}
         # SSL configuration for managed database connections
         - key: PG_META_DB_SSL_MODE
           value: "require"
         - key: PG_META_DB_SSL_ROOT_CERT
-          scope: RUN_TIME
           value: ${supabase-db.CA_CERT}
         # Decryption key for Studio's encrypted connection strings
         # Must match Studio's PG_META_CRYPTO_KEY
         - key: CRYPTO_KEY
-          scope: RUN_TIME
           type: SECRET
           value: <REQUIRED>
 
@@ -183,7 +165,6 @@ spec:
       instance_size_slug: apps-s-1vcpu-0.5gb
       envs:
         - key: DATABASE_URL
-          scope: RUN_TIME
           type: SECRET
           value: ${supabase-db.DATABASE_URL}
 
