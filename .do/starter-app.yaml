@@ -38,6 +38,7 @@ services:
       initial_delay_seconds: 30
       period_seconds: 10
       timeout_seconds: 5
+      success_threshold: 1
       failure_threshold: 3
     envs:
       - key: STUDIO_PG_META_URL
@@ -100,6 +101,7 @@ services:
       initial_delay_seconds: 10
       period_seconds: 10
       timeout_seconds: 3
+      success_threshold: 1
       failure_threshold: 3
     envs:
       - key: PGRST_DB_URI
