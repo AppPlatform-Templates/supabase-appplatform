@@ -8,6 +8,63 @@ CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE SCHEMA IF NOT EXISTS realtime;
 CREATE SCHEMA IF NOT EXISTS _realtime;
 
+-- ============================================================================
+-- AUTH HELPER FUNCTIONS (required for RLS policies)
+-- ============================================================================
+-- These functions extract user information from JWT claims set by PostgREST
+-- PostgREST sets request.jwt.claims from the Authorization Bearer token
+
+-- auth.uid() - Get the user ID from the JWT 'sub' claim
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claims', true), '')::jsonb->>'sub',
+    (NULLIF(current_setting('request.jwt.claims', true), '')::jsonb->>'user_id')
+  )::uuid
+$$;
+
+-- auth.jwt() - Get all JWT claims
+CREATE OR REPLACE FUNCTION auth.jwt()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claims', true), '')::jsonb,
+    '{}'::jsonb
+  )
+$$;
+
+-- auth.role() - Get the role from the JWT
+CREATE OR REPLACE FUNCTION auth.role()
+RETURNS text
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claims', true), '')::jsonb->>'role',
+    current_setting('role', true)
+  )
+$$;
+
+-- auth.email() - Get the email from the JWT
+CREATE OR REPLACE FUNCTION auth.email()
+RETURNS text
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claims', true), '')::jsonb->>'email'
+$$;
+
+-- Grant execute permissions to API roles
+GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.jwt() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.role() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.email() TO anon, authenticated, service_role;
+
 -- Install required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;

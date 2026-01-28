@@ -1,18 +1,46 @@
 # Supabase on DigitalOcean App Platform
 
-Deploy your own Supabase instance on DigitalOcean App Platform with a managed PostgreSQL database. This template provides a simplified setup that transforms your database into a complete backend platform with an auto-generated REST API and web dashboard.
+Deploy your own Supabase instance on DigitalOcean App Platform with a managed PostgreSQL database. This template provides a complete backend platform with auto-generated REST API, authentication, file storage, and realtime subscriptions.
 
 [![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/AppPlatform-Templates/supabase-appplatform/tree/main)
 
 ## What You Get
 
-This starter template includes:
+This template includes:
 
-- **Studio** - Web-based admin dashboard for database management
 - **PostgREST** - Auto-generated REST API from your database schema
-- **Meta** - Database introspection API (powers Studio features)
+- **GoTrue** - Authentication service (email/password, OAuth, magic links)
+- **Storage** - File management with DigitalOcean Spaces integration
+- **Realtime** - WebSocket subscriptions for database changes
 - **PostgreSQL 17** - Managed database with automatic initialization
 - **JWT Authentication** - Secure API access with row-level security
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         Client/User                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    App Platform Ingress                     │
+│   /rest/v1   /auth/v1   /storage/v1   /realtime/v1          │
+└─────────────────────────────────────────────────────────────┘
+       │            │            │               │
+       ▼            ▼            ▼               ▼
+┌───────────┐ ┌──────────┐ ┌──────────┐  ┌────────────┐
+│ PostgREST │ │  GoTrue  │ │ Storage  │  │  Realtime  │
+│   (API)   │ │  (Auth)  │ │  (Files) │  │    (WS)    │
+└───────────┘ └──────────┘ └──────────┘  └────────────┘
+       │            │            │               │
+       └────────────┴────────────┴───────────────┘
+                    │            │
+                    ▼            ▼
+          ┌──────────────┐  ┌──────────────┐
+          │  PostgreSQL  │  │  DO Spaces   │
+          └──────────────┘  └──────────────┘
+```
 
 ## Deployment Options
 
@@ -25,7 +53,7 @@ This starter template includes:
    doctl databases create supabase-db \
      --engine pg \
      --version 17 \
-     --size db-s-1vcpu-2gb \
+     --size db-s-2vcpu-4gb \
      --region nyc3
    ```
 
@@ -34,10 +62,19 @@ This starter template includes:
    doctl databases list --format Name,Status
    ```
 
-2. **Generate Keys**:
+2. **Create DigitalOcean Spaces Bucket**:
+   - Go to https://cloud.digitalocean.com/spaces/new
+   - Choose a region (e.g., nyc3)
+   - Create bucket (e.g., `supabase-storage-space`)
+   - Generate Spaces API keys: Account → API → Spaces Keys → Generate New Key
+   - Note your endpoint URL format: `https://{region}.digitaloceanspaces.com`
+     - Example for nyc3: `https://nyc3.digitaloceanspaces.com`
+
+3. **Generate Keys**:
    ```bash
    git clone https://github.com/AppPlatform-Templates/supabase-appplatform.git
    cd supabase-appplatform
+
    chmod +x scripts/generate-keys.sh
    ./scripts/generate-keys.sh
    ```
@@ -46,21 +83,29 @@ This starter template includes:
 
 #### Deployment Steps
 
-1. Click "Deploy to DO" button
+1. Click on "Deploy to DigitalOcean" button
 2. In App Platform UI, scroll to **Resources** section
 3. Click "Attach Database" and select `supabase-db`
 4. Expand each component and replace `<REQUIRED>` values:
 
    | Component | Environment Variable | Use This Key |
    |-----------|---------------------|--------------|
-   | **studio** | `PG_META_CRYPTO_KEY` | `CRYPTO_KEY` |
-   | **studio** | `SUPABASE_ANON_KEY` | `SUPABASE_ANON_KEY` |
-   | **studio** | `SUPABASE_SERVICE_KEY` | `SUPABASE_SERVICE_KEY` |
    | **rest** | `PGRST_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
-   | **meta** | `CRYPTO_KEY` | `CRYPTO_KEY` |
+   | **auth** | `GOTRUE_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+   | **storage** | `ANON_KEY` | `SUPABASE_ANON_KEY` |
+   | **storage** | `SERVICE_KEY` | `SUPABASE_SERVICE_KEY` |
+   | **storage** | `PGRST_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+   | **storage** | `GLOBAL_S3_BUCKET` | Your bucket name |
+   | **storage** | `REGION` | Your region (e.g., `nyc3`) |
+   | **storage** | `GLOBAL_S3_ENDPOINT` | Your endpoint URL |
+   | **storage** | `AWS_ACCESS_KEY_ID` | Your Spaces access key |
+   | **storage** | `AWS_SECRET_ACCESS_KEY` | Your Spaces secret key |
+   | **realtime** | `DB_ENC_KEY` | `DB_ENC_KEY` |
+   | **realtime** | `API_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+   | **realtime** | `SECRET_KEY_BASE` | `SECRET_KEY_BASE` |
 
 5. Click **Create App**
-6. Wait for deployment to complete (3-5 minutes)
+6. Wait for deployment to complete (8-12 minutes)
 
 ### Option 2: CLI Deployment
 
@@ -73,12 +118,16 @@ Create a managed database:
 doctl databases create supabase-db \
   --engine pg \
   --version 17 \
-  --size db-s-1vcpu-2gb \
+  --size db-s-2vcpu-4gb \
   --region nyc3
 
 # Wait for database to be ready (5-10 minutes)
 doctl databases list --format Name,Status
 ```
+
+Create DigitalOcean Spaces bucket at https://cloud.digitalocean.com/spaces/new and generate API keys.
+
+Note your endpoint URL format: `https://{region}.digitaloceanspaces.com` (e.g., `https://nyc3.digitaloceanspaces.com`)
 
 #### Step 2: Clone and Configure
 
@@ -93,23 +142,31 @@ chmod +x scripts/generate-keys.sh
 
 #### Step 3: Update App Spec
 
-Edit `.do/starter-app.yaml` and replace all `<REQUIRED>` placeholders with generated keys:
+Edit `.do/production-app.yaml` and replace all `<REQUIRED>` placeholders:
 
-| Service | Environment Variable | Generated Key to Use |
+| Service | Environment Variable | Value / Generated Key |
 |---------|---------------------|---------------------|
-| **studio** | `PG_META_CRYPTO_KEY` | `CRYPTO_KEY` |
-| **studio** | `SUPABASE_ANON_KEY` | `SUPABASE_ANON_KEY` |
-| **studio** | `SUPABASE_SERVICE_KEY` | `SUPABASE_SERVICE_KEY` |
 | **rest** | `PGRST_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
-| **meta** | `CRYPTO_KEY` | `CRYPTO_KEY` |
+| **auth** | `GOTRUE_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+| **storage** | `ANON_KEY` | `SUPABASE_ANON_KEY` |
+| **storage** | `SERVICE_KEY` | `SUPABASE_SERVICE_KEY` |
+| **storage** | `PGRST_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+| **storage** | `GLOBAL_S3_BUCKET` | Your bucket name |
+| **storage** | `REGION` | Your region (e.g., `nyc3`) |
+| **storage** | `GLOBAL_S3_ENDPOINT` | Your endpoint URL |
+| **storage** | `AWS_ACCESS_KEY_ID` | Your Spaces access key |
+| **storage** | `AWS_SECRET_ACCESS_KEY` | Your Spaces secret key |
+| **realtime** | `DB_ENC_KEY` | `DB_ENC_KEY` |
+| **realtime** | `API_JWT_SECRET` | `SUPABASE_JWT_SECRET` |
+| **realtime** | `SECRET_KEY_BASE` | `SECRET_KEY_BASE` |
 
 #### Step 4: Deploy
 
 ```bash
-doctl apps create --spec .do/starter-app.yaml
+doctl apps create --spec .do/production-app.yaml
 ```
 
-Wait for deployment to complete (3-5 minutes):
+Wait for deployment to complete (8-12 minutes):
 ```bash
 # Check deployment status
 doctl apps list
@@ -133,7 +190,7 @@ For custom modifications:
 
 3. **Update git repository URLs** in app spec files:
 
-   Edit `.do/starter-app.yaml` (or `.do/production-app.yaml`) and update the `db-init` job:
+   Edit `.do/production-app.yaml` and update the `db-init` job:
    ```yaml
    jobs:
      - name: db-init
@@ -157,8 +214,10 @@ For custom modifications:
 APP_ID=$(doctl apps list --format ID --no-header)
 APP_URL=$(doctl apps get $APP_ID --format DefaultIngress --no-header)
 
-echo "Studio Dashboard: https://$APP_URL"
 echo "REST API: https://$APP_URL/rest/v1/"
+echo "Auth: https://$APP_URL/auth/v1/"
+echo "Storage: https://$APP_URL/storage/v1/"
+echo "Realtime: https://$APP_URL/realtime/v1/"
 ```
 
 ### Verify Deployment
@@ -179,11 +238,19 @@ ANON_KEY="your-anon-key-here"
 # List available endpoints
 curl "https://$APP_URL/rest/v1/" \
   -H "apikey: $ANON_KEY"
+```
 
-# Create a test table in Studio, then query it
-curl "https://$APP_URL/rest/v1/your_table" \
+### Test Authentication
+
+```bash
+# Create a test user
+curl -X POST "https://$APP_URL/auth/v1/signup" \
   -H "apikey: $ANON_KEY" \
-  -H "Authorization: Bearer $ANON_KEY"
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "testpassword123"
+  }'
 ```
 
 ## What's Included
@@ -192,6 +259,7 @@ curl "https://$APP_URL/rest/v1/your_table" \
 
 The deployment automatically sets up:
 - Database roles: `anon`, `authenticated`, `service_role`
+- Auth helper functions: `auth.uid()`, `auth.jwt()`, `auth.role()`, `auth.email()`
 - PostgreSQL extensions: `pgcrypto`, `pgjwt`, `uuid-ossp`
 - Default search paths for each role
 - Permissions for API access
@@ -200,30 +268,114 @@ The deployment automatically sets up:
 
 | Component | Purpose | Accessible At |
 |-----------|---------|---------------|
-| **Studio** | Web admin dashboard | `https://your-app.ondigitalocean.app/` |
 | **PostgREST** | Auto-generated REST API | `https://your-app.ondigitalocean.app/rest/v1/` |
-| **Meta** | Database introspection | Internal (used by Studio) |
+| **GoTrue** | Authentication service | `https://your-app.ondigitalocean.app/auth/v1/` |
+| **Storage** | File management | `https://your-app.ondigitalocean.app/storage/v1/` |
+| **Realtime** | WebSocket subscriptions | `https://your-app.ondigitalocean.app/realtime/v1/` |
 
 ### Important Notes
-
-- **Schema Creation**: Use Studio's SQL Editor to create schemas (not the UI). DigitalOcean's managed databases have security restrictions.
-  ```sql
-  CREATE SCHEMA my_schema;
-  ```
 
 - **JWT Keys**: Keep your `SUPABASE_SERVICE_KEY` secure - it bypasses all Row Level Security policies.
 
 - **API Key**: The `SUPABASE_ANON_KEY` is safe to use in client applications.
 
-## Need More Features?
+- **Auto-scaling**: Each service automatically scales between 1-3 instances based on CPU usage.
 
-This starter template focuses on core functionality. For production deployments with additional services:
+## Database Management
 
-- **Authentication** (email/password, OAuth, magic links)
-- **File Storage** (S3-compatible with DigitalOcean Spaces)
-- **Realtime** (WebSocket subscriptions for database changes)
+Since this template focuses on production APIs without Studio, you have several options for database management:
 
-See **[PRODUCTION.md](PRODUCTION.md)** for the full production deployment guide.
+### Option 1: Connect with psql
+
+```bash
+# Get database connection details
+DB_ID=$(doctl databases list --format ID --no-header)
+doctl databases connection $DB_ID
+
+# Connect directly
+psql "postgresql://doadmin:password@host:25060/defaultdb?sslmode=require"
+```
+
+### Option 2: Use pgAdmin or Other PostgreSQL Tools
+
+Connect using your database credentials with any PostgreSQL client:
+- Host: Your database hostname
+- Port: 25060
+- Database: defaultdb
+- User: doadmin
+- SSL Mode: require
+
+### Option 3: Run Studio Locally
+
+You can run Supabase Studio locally and connect to your remote database:
+
+```bash
+docker run -p 3000:3000 \
+  -e POSTGRES_HOST=your-db-host.db.ondigitalocean.com \
+  -e POSTGRES_PORT=25060 \
+  -e POSTGRES_DB=defaultdb \
+  -e POSTGRES_USER=doadmin \
+  -e POSTGRES_PASSWORD=your-password \
+  supabase/studio:latest
+```
+
+Then access Studio at `http://localhost:3000`
+
+**Note**: Studio is not included in production deployments for security reasons (no built-in authentication).
+
+## Advanced Configuration
+
+### Email Setup (Optional)
+
+Add SMTP configuration to GoTrue service in `.do/production-app.yaml`:
+
+```yaml
+- key: GOTRUE_SMTP_HOST
+  value: smtp.sendgrid.net
+- key: GOTRUE_SMTP_PORT
+  value: "587"
+- key: GOTRUE_SMTP_USER
+  type: SECRET
+  value: apikey
+- key: GOTRUE_SMTP_PASS
+  type: SECRET
+  value: <your-sendgrid-api-key>
+- key: GOTRUE_SMTP_ADMIN_EMAIL
+  value: admin@yourdomain.com
+- key: GOTRUE_MAILER_AUTOCONFIRM
+  value: "false"
+```
+
+### OAuth Providers (Optional)
+
+Add OAuth configuration to GoTrue service:
+
+```yaml
+# Google OAuth
+- key: GOTRUE_EXTERNAL_GOOGLE_ENABLED
+  value: "true"
+- key: GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID
+  type: SECRET
+  value: <your-google-client-id>
+- key: GOTRUE_EXTERNAL_GOOGLE_SECRET
+  type: SECRET
+  value: <your-google-client-secret>
+- key: GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI
+  value: https://$APP_URL/auth/v1/callback
+```
+
+### Monitoring
+
+```bash
+# Check deployment status
+doctl apps get $APP_ID
+
+# View service logs
+doctl apps logs $APP_ID rest --follow
+doctl apps logs $APP_ID auth --follow
+doctl apps logs $APP_ID storage --follow
+doctl apps logs $APP_ID realtime --follow
+```
 
 ## Clean Up
 

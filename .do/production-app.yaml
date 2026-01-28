@@ -10,6 +10,10 @@
 # - Managed PostgreSQL (production tier)
 # - Professional instance sizes for better performance
 #
+# NOTE: Studio is NOT included in production. It has no built-in authentication
+# and should not be exposed publicly. Run Studio locally for admin access:
+# docker run -p 3000:3000 -e POSTGRES_HOST=... supabase/studio
+#
 # Prerequisites:
 # 1. Create managed PostgreSQL database
 # 2. Create DigitalOcean Spaces bucket for storage
@@ -18,7 +22,7 @@
 #
 # Deploy with: doctl apps create --spec .do/production-app.yaml
 
-name: supabase-production
+name: supabase-app
 # Optionally you can chose a region where the deployment will be hosted
 # Otherwise, DO will chose the nearest region for you in the wizard
 # region: nyc
@@ -49,85 +53,8 @@ ingress:
       component:
         name: realtime
         rewrite: /
-    - match:
-        path:
-          prefix: /
-      component:
-        name: studio
 
 services:
-  # Studio - Admin Dashboard
-  - name: studio
-    image:
-      registry_type: DOCKER_HUB
-      registry: supabase
-      repository: studio
-      tag: 2025.12.17-sha-43f4f7f
-    http_port: 3000
-    instance_size_slug: apps-d-1vcpu-1gb
-    # instance_count: 2  # If autoscaling is disabled, uncomment and set instance_count (required)
-
-    # Auto-scaling configuration
-    autoscaling:
-      min_instance_count: 1
-      max_instance_count: 3
-      metrics:
-        cpu:
-          percent: 70
-
-    health_check:
-      http_path: /api/platform/profile
-      initial_delay_seconds: 30
-      period_seconds: 10
-      timeout_seconds: 5
-      failure_threshold: 3
-      success_threshold: 1
-
-    envs:
-      - key: STUDIO_PG_META_URL
-        value: http://meta:8080
-      - key: POSTGRES_HOST
-        value: ${supabase-db.HOSTNAME}
-      - key: POSTGRES_PORT
-        value: ${supabase-db.PORT}
-      - key: POSTGRES_DB
-        value: ${supabase-db.DATABASE}
-      - key: POSTGRES_USER
-        value: ${supabase-db.USERNAME}
-      - key: POSTGRES_PASSWORD
-        type: SECRET
-        value: ${supabase-db.PASSWORD}
-      # Encryption key for Studio-Meta communication
-      # Studio encrypts connection strings using PG_META_CRYPTO_KEY (with username: supabase_admin)
-      # Meta decrypts using CRYPTO_KEY
-      - key: PG_META_CRYPTO_KEY
-        type: SECRET
-        value: <REQUIRED>
-      - key: DEFAULT_ORGANIZATION_NAME
-        value: "My Supabase Organization"
-      - key: DEFAULT_PROJECT_NAME
-        value: "Main Project"
-      - key: SUPABASE_URL
-        value: ${APP_URL}
-      - key: SUPABASE_PUBLIC_URL
-        value: ${APP_URL}
-      - key: SUPABASE_ANON_KEY
-        type: SECRET
-        value: <REQUIRED>
-      - key: SUPABASE_SERVICE_KEY
-        type: SECRET
-        value: <REQUIRED>
-      - key: NEXT_PUBLIC_ENABLE_LOGS
-        value: "true"
-
-      # Template Tracking (for DigitalOcean analytics)
-      - key: APPPLAT_BASE_TEMPLATE
-        value: "supabase"
-      - key: APPPLAT_TEMPLATE_TYPE
-        value: "production"
-      - key: APPPLAT_TEMPLATE_COMMIT_SHA
-        value: ${_self.COMMIT_HASH}
-
   # PostgREST - REST API for PostgreSQL
   - name: rest
     image:
@@ -170,6 +97,14 @@ services:
         value: <REQUIRED>
       - key: PGRST_JWT_AUD
         value: authenticated
+
+      # Template Tracking (for DigitalOcean analytics)
+      - key: APPPLAT_BASE_TEMPLATE
+        value: "supabase"
+      - key: APPPLAT_TEMPLATE_TYPE
+        value: "production"
+      - key: APPPLAT_TEMPLATE_COMMIT_SHA
+        value: ${_self.COMMIT_HASH}
 
   # GoTrue - Authentication Service
   - name: auth
@@ -217,6 +152,8 @@ services:
       - key: GOTRUE_JWT_EXP
         value: "3600"
       - key: GOTRUE_JWT_AUD
+        value: authenticated
+      - key: GOTRUE_JWT_DEFAULT_GROUP_NAME
         value: authenticated
       - key: GOTRUE_DISABLE_SIGNUP
         value: "false"
@@ -369,42 +306,6 @@ services:
         value: "true"
       - key: RLIMIT_NOFILE
         value: "65536"
-
-  # Meta - Database Management API (internal only, accessed by Studio)
-  - name: meta
-    image:
-      registry_type: DOCKER_HUB
-      registry: supabase
-      repository: postgres-meta
-      tag: v0.95.1
-    internal_ports:
-      - 8080
-    instance_size_slug: apps-d-1vcpu-1gb
-    instance_count: 1
-
-    envs:
-      - key: PG_META_PORT
-        value: "8080"
-      - key: PG_META_DB_HOST
-        value: ${supabase-db.HOSTNAME}
-      - key: PG_META_DB_PORT
-        value: ${supabase-db.PORT}
-      - key: PG_META_DB_NAME
-        value: ${supabase-db.DATABASE}
-      - key: PG_META_DB_USER
-        value: supabase_admin
-      - key: PG_META_DB_PASSWORD
-        type: SECRET
-        value: ${supabase-db.PASSWORD}
-      - key: PG_META_DB_SSL_MODE
-        value: "require"
-      - key: PG_META_DB_SSL_ROOT_CERT
-        value: ${supabase-db.CA_CERT}
-      # Decryption key for Studio's encrypted connection strings
-      # Must match Studio's PG_META_CRYPTO_KEY
-      - key: CRYPTO_KEY
-        type: SECRET
-        value: <REQUIRED>
 
 jobs:
   # Database Initialization (runs before services start)
