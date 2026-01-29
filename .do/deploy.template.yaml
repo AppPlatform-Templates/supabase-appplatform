@@ -114,8 +114,6 @@ spec:
           value: "0.0.0.0"
         - key: GOTRUE_API_PORT
           value: "9999"
-        - key: GOTRUE_API_REQUEST_TIMEOUT
-          value: "30s"
         - key: GOTRUE_DB_DRIVER
           value: postgres
         - key: GOTRUE_DB_DATABASE_URL
