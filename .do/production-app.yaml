@@ -114,7 +114,7 @@ services:
       repository: gotrue
       tag: v2.155.1
     http_port: 9999
-    instance_size_slug: apps-d-1vcpu-1gb
+    instance_size_slug: apps-d-1vcpu-2gb
     # instance_count: 2  # If autoscaling is disabled, uncomment and set instance_count (required)
 
     autoscaling:
@@ -137,6 +137,8 @@ services:
         value: "0.0.0.0"
       - key: GOTRUE_API_PORT
         value: "9999"
+      - key: GOTRUE_API_REQUEST_TIMEOUT
+        value: "30s"
       - key: GOTRUE_DB_DRIVER
         value: postgres
       - key: GOTRUE_DB_DATABASE_URL
