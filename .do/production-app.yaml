@@ -247,7 +247,7 @@ services:
       repository: realtime
       tag: v2.68.0
     http_port: 4000
-    instance_size_slug: apps-d-1vcpu-1gb
+    instance_size_slug: apps-d-1vcpu-2gb
     # instance_count: 2  # If autoscaling is disabled, uncomment and set instance_count (required)
 
     autoscaling:
