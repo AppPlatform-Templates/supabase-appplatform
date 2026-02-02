@@ -183,6 +183,10 @@ GRANT ALL ON SCHEMA storage TO doadmin;
 GRANT ALL ON SCHEMA realtime TO doadmin;
 GRANT ALL ON SCHEMA _realtime TO doadmin;
 
+-- Grant doadmin table-level access to storage schema
+GRANT ALL ON ALL TABLES IN SCHEMA storage TO doadmin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO doadmin;
+
 -- Grant permissions to API roles (anon, authenticated, service_role) on public schema
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
