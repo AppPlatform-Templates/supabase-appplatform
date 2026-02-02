@@ -228,12 +228,15 @@ ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON TABLES 
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON SEQUENCES TO supabase_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON ROUTINES TO supabase_admin;
 
--- Grant storage permissions to service_role (CRITICAL for Storage API access)
+-- Grant storage permissions to service_role
 GRANT USAGE ON SCHEMA storage TO service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA storage TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO service_role;
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON TABLES TO service_role;
 ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA storage GRANT ALL ON SEQUENCES TO service_role;
+
+-- Grant storage schema access to frontend roles
+GRANT USAGE ON SCHEMA storage TO anon, authenticated;
 
 -- Grant permissions on extensions schema
 GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
@@ -354,6 +357,10 @@ ALTER ROLE doadmin IN DATABASE defaultdb SET search_path = storage, public, auth
 
 -- Set search_path for authenticator (used by PostgREST)
 ALTER ROLE authenticator IN DATABASE defaultdb SET search_path = public, extensions;
+
+-- Set search_path for frontend roles
+ALTER ROLE anon IN DATABASE defaultdb SET search_path = storage, public, auth, extensions;
+ALTER ROLE authenticated IN DATABASE defaultdb SET search_path = storage, public, auth, extensions;
 
 -- Set search_path for storage admin
 ALTER ROLE supabase_storage_admin IN DATABASE defaultdb SET search_path = storage, public, extensions;
